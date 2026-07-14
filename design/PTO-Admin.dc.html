@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Geist","Inter",system-ui,-apple-system,sans-serif;background:#f4f4f5;color:#18181b;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:#5c4bd4;text-decoration:none}
+  a:hover{color:#4a3bc0;text-decoration:underline}
+  ::selection{background:#e3defb}
+  input,select,textarea,button{font-family:inherit}
+  input::placeholder,textarea::placeholder{color:#a1a1aa}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes din{from{transform:translateX(28px);opacity:.4}to{transform:none;opacity:1}}
+  @keyframes fin{from{opacity:0}to{opacity:1}}
+  @keyframes min{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes ddn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:#d4d4d8;border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:#a1a1aa;background-clip:padding-box;border:3px solid transparent}
+</style>
+</helmet>
+
+<section style="display:flex;justify-content:center;padding:40px 32px 80px">
+  <div style="width:100%;max-width:1240px;display:flex;flex-direction:column">
+
+    <!-- ===================== HEADER ===================== -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:13px">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-.02em">PTO Admin</span>
+        <span style="width:1px;height:16px;background:#e4e4e7"></span>
+        <span style="font-size:13.5px;color:#71717a">{{ team }} · {{ year }}</span>
+      </div>
+      <div style="position:relative;display:flex;align-items:center;gap:9px">
+        <button onClick="{{ toggleMenu }}" style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;font-size:13px;font-weight:600;color:#fff;background:#7B68EE;border:1px solid #7B68EE;border-radius:9px;cursor:pointer;box-shadow:0 1px 2px rgba(123,104,238,.25)" style-hover="background:#5c4bd4;border-color:#5c4bd4"><span style="font-size:16px;line-height:1;margin-top:-1px">+</span>New action<span style="font-size:10px;opacity:.85;margin-left:1px">▾</span></button>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeMenu }}" style="position:fixed;inset:0;z-index:40"></div>
+          <div style="position:absolute;top:44px;right:0;z-index:41;width:230px;background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:6px;box-shadow:0 18px 44px -14px rgba(24,24,27,.32);animation:ddn .14s ease">
+            <div onClick="{{ onMenuRecord }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Record time off</div>
+            <div onClick="{{ onMenuAddEmp }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Add employee</div>
+            <div style="height:1px;background:#f0f0f0;margin:5px 6px"></div>
+            <div onClick="{{ onMenuAdjust }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Adjust allocation</div>
+            <div onClick="{{ onMenuChangeType }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Change employment type</div>
+            <div onClick="{{ onMenuOffboard }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Offboard employee</div>
+            <div onClick="{{ onMenuRollover }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#27272a;cursor:pointer;font-weight:500" style-hover="background:#f4f4f5">Year rollover</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- ===================== CARD ===================== -->
+    <div style="background:#fff;border:1px solid #e4e4e7;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(24,24,27,.04),0 20px 40px -28px rgba(24,24,27,.18)">
+
+      <!-- read-only banner -->
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 22px;background:#fff8e0;border-bottom:1px solid #ffe082;font-size:12.5px;color:#292D34">
+        <span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.09em;text-transform:uppercase;background:#ffedb0;border:1px solid #FFC800;color:#7a5c00;padding:3px 6px;border-radius:5px">Read-only</span>
+        <span style="flex:1">Approvals and denials are managed in ClickUp. This tool records, adjusts, and exports entries — balances are computed, never typed.</span>
+        <div onClick="{{ onToggleReadOnly }}" style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;color:#292D34;font-weight:500">
+          <span>Read-only mode</span>
+          <span style="{{ roTrack }}"><span style="{{ roKnob }}"></span></span>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div style="display:flex;align-items:center;gap:2px;padding:0 22px;border-bottom:1px solid #e4e4e7">
+        <div onClick="{{ onTabBalances }}" style="{{ tabBalStyle }}">Balances</div>
+        <div onClick="{{ onTabLog }}" style="{{ tabLogStyle }}">Request log</div>
+      </div>
+
+      <!-- ===================== BALANCES ===================== -->
+      <sc-if value="{{ isBalances }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Balances">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 22px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+            <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="Search by name…" style="height:33px;width:230px;padding:0 11px;font-size:13px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)">
+            <div style="display:flex;align-items:center;gap:2px;background:#f4f4f5;border:1px solid #e4e4e7;border-radius:9px;padding:2px">
+              <sc-for list="{{ yearBtns }}" as="y" hint-placeholder-count="3"><div onClick="{{ y._click }}" style="{{ y._style }}">{{ y.label }}</div></sc-for>
+            </div>
+            <div onClick="{{ onToggleInactive }}" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#52525b;font-weight:500">
+              <span style="{{ swTrack }}"><span style="{{ swKnob }}"></span></span>
+              Show inactive
+            </div>
+            <button onClick="{{ onExport }}" style="margin-left:auto;display:inline-flex;align-items:center;height:33px;padding:0 13px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:8px;cursor:pointer" style-hover="background:#f4f4f5;border-color:#d4d4d8">Export CSV</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:1080px">
+              <thead><tr>
+                <th style="text-align:left;padding:10px 22px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Name</th>
+                <th style="text-align:left;padding:10px 10px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:96px">Type</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:66px">Allotted</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:62px">Vacation</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:52px">Sick</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:62px">Birthday</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:66px">Maternity</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:66px">Paternity</th>
+                <th style="text-align:center;padding:10px 8px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7;width:58px">Unpaid</th>
+                <th style="text-align:left;padding:10px 22px 10px 14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#5c4bd4;border-bottom:1px solid #e4e4e7;width:210px">Remaining</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ rows }}" as="e" hint-placeholder-count="10">
+                  <tr onClick="{{ e._open }}" style="{{ e._rowStyle }}" style-hover="background:#fafafa">
+                    <td style="padding:12px 22px">
+                      <div style="display:flex;align-items:center;gap:11px">
+                        <span style="{{ e._av }}">{{ e.initials }}</span>
+                        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-weight:600;color:#18181b">{{ e.name }}</span>
+                          <span style="font-size:11.5px;color:#a1a1aa">{{ e.email }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding:12px 10px"><span style="{{ e._typeBadge }}">{{ e.typeLabel }}</span></td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#3f3f46;font-weight:500">{{ e.allotLabel }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.vacU }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.sickU }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.bdayU }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.matU }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.patU }}</td>
+                    <td style="padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#52525b">{{ e.unpaidU }}</td>
+                    <td style="padding:12px 22px 12px 14px">
+                      <div style="display:flex;align-items:baseline;gap:5px">
+                        <span style="{{ e._remStyle }}">{{ e.remLabel }}</span>
+                        <span style="font-size:11.5px;color:#a1a1aa">{{ e.remSub }}</span>
+                        <sc-if value="{{ e._hasChip }}" hint-placeholder-val="{{ false }}"><span style="{{ e._chipStyle }}">{{ e.chipLabel }}</span></sc-if>
+                      </div>
+                      <sc-if value="{{ e._hasBar }}" hint-placeholder-val="{{ true }}">
+                        <div style="margin-top:8px;width:150px;height:5px;background:#f1f1f3;border-radius:999px;overflow:hidden"><div style="{{ e._bar }}"></div></div>
+                      </sc-if>
+                    </td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:13px 22px;border-top:1px solid #e4e4e7;background:#fafafa">
+            <span style="font-size:12px;color:#a1a1aa;line-height:1.5">Numbers are computed live from approved and completed requests — they can't be edited directly. To change someone's allowance, use <span style="color:#71717a;font-weight:500">Adjust allocation</span>.</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===================== REQUEST LOG ===================== -->
+      <sc-if value="{{ isLog }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Request log">
+          <div style="display:flex;align-items:center;gap:9px;padding:13px 22px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+            <select value="{{ logYear }}" onChange="{{ onLogYear }}" style="height:33px;padding:0 9px;font-size:13px;border:1px solid #e4e4e7;border-radius:8px;color:#3f3f46;background:#fff;cursor:pointer;outline:none">
+              <option value="all">All years</option>
+              <sc-for list="{{ yearOptions }}" as="y" hint-placeholder-count="3"><option value="{{ y }}">{{ y }}</option></sc-for>
+            </select>
+            <select value="{{ logStatus }}" onChange="{{ onLogStatus }}" style="height:33px;padding:0 9px;font-size:13px;border:1px solid #e4e4e7;border-radius:8px;color:#3f3f46;background:#fff;cursor:pointer;outline:none">
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="complete">Complete</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="denied">Denied</option>
+            </select>
+            <select value="{{ logPerson }}" onChange="{{ onLogPerson }}" style="height:33px;padding:0 9px;font-size:13px;border:1px solid #e4e4e7;border-radius:8px;color:#3f3f46;background:#fff;cursor:pointer;outline:none;max-width:190px">
+              <option value="all">All people</option>
+              <sc-for list="{{ personOptions }}" as="p" hint-placeholder-count="6"><option value="{{ p }}">{{ p }}</option></sc-for>
+            </select>
+            <span style="font-size:12px;color:#a1a1aa;margin-left:4px">{{ reqCountLabel }}</span>
+            <button onClick="{{ onExport }}" style="margin-left:auto;display:inline-flex;align-items:center;height:33px;padding:0 13px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:8px;cursor:pointer" style-hover="background:#f4f4f5;border-color:#d4d4d8">Export CSV</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px">
+              <thead><tr>
+                <th style="text-align:left;padding:10px 22px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Name</th>
+                <th style="text-align:left;padding:10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Leave type</th>
+                <th style="text-align:left;padding:10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Start</th>
+                <th style="text-align:left;padding:10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">End</th>
+                <th style="text-align:right;padding:10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Days</th>
+                <th style="text-align:left;padding:10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Status</th>
+                <th style="text-align:left;padding:10px 22px 10px 12px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #e4e4e7">Source</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ reqRows }}" as="r" hint-placeholder-count="10">
+                  <tr onClick="{{ r._open }}" style="cursor:pointer;border-bottom:1px solid #f4f4f5" style-hover="background:#fafafa">
+                    <td style="padding:12px 22px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="{{ r._av }}">{{ r.initials }}</span>
+                        <span style="font-weight:600;color:#18181b">{{ r.empName }}</span>
+                      </div>
+                    </td>
+                    <td style="padding:12px 12px;color:#3f3f46">{{ r.typeLabel }}</td>
+                    <td style="padding:12px 12px;color:#52525b">{{ r.startFmt }}</td>
+                    <td style="padding:12px 12px;color:#52525b">{{ r.endFmt }}</td>
+                    <td style="padding:12px 12px;text-align:right;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#3f3f46">{{ r.daysLabel }}</td>
+                    <td style="padding:12px 12px"><span style="{{ r._statusChip }}"><span style="{{ r._statusDot }}"></span>{{ r.statusLabel }}</span></td>
+                    <td style="padding:12px 22px 12px 12px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#71717a;font-weight:500"><span style="{{ r._srcDot }}"></span>{{ r.sourceLabel }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- ===================== EMPLOYEE DRAWER ===================== -->
+  <sc-if value="{{ hasEmp }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeEmp }}" style="position:fixed;inset:0;z-index:1000;background:rgba(24,24,27,.35);backdrop-filter:blur(2px);animation:fin .15s ease"></div>
+    <div data-screen-label="Employee drawer" style="position:fixed;top:0;right:0;height:100vh;width:508px;max-width:100vw;background:#fff;border-left:1px solid #e4e4e7;z-index:1001;display:flex;flex-direction:column;box-shadow:-30px 0 70px -30px rgba(24,24,27,.35);animation:din .22s cubic-bezier(.22,1,.36,1)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:20px 22px;border-bottom:1px solid #f4f4f5">
+        <div style="display:flex;align-items:center;gap:13px">
+          <span style="{{ emp._avLg }}">{{ emp.initials }}</span>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px;font-weight:700;letter-spacing:-.01em">{{ emp.name }}</span>
+              <span style="{{ emp._typeBadge }}">{{ emp.typeLabel }}</span>
+              <sc-if value="{{ emp.inactive }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#71717a;background:#f4f4f5;border:1px solid #e4e4e7;padding:2px 6px;border-radius:5px">Inactive</span></sc-if>
+            </div>
+            <span style="font-size:12.5px;color:#a1a1aa">{{ emp.email }} · {{ year }}</span>
+          </div>
+        </div>
+        <div onClick="{{ closeEmp }}" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#71717a;font-size:20px;flex-shrink:0" style-hover="background:#f4f4f5;color:#18181b">×</div>
+      </div>
+      <div style="overflow:auto;flex:1;padding:20px 22px;display:flex;flex-direction:column;gap:22px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px">
+          <div style="border:1px solid #e4e4e7;background:#fafafa;border-radius:12px;padding:13px 14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#71717a;margin-bottom:8px">Vac. allotted</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;line-height:1;color:#18181b">{{ emp.allotLabel }}</span>
+          </div>
+          <div style="border:1px solid #e4e4e7;background:#fafafa;border-radius:12px;padding:13px 14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#71717a;margin-bottom:8px">Vac. used</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;line-height:1;color:#18181b">{{ emp.vacU }}</span>
+          </div>
+          <div style="border:1px solid #e3defb;background:#f6f4fe;border-radius:12px;padding:13px 14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#5c4bd4;margin-bottom:8px">Remaining</div>
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <span style="{{ emp._remStyle }}">{{ emp.remLabel }}</span>
+              <sc-if value="{{ emp._hasChip }}" hint-placeholder-val="{{ false }}"><span style="{{ emp._chipStyle }}">{{ emp.chipLabel }}</span></sc-if>
+            </div>
+            <sc-if value="{{ emp._hasBar }}" hint-placeholder-val="{{ true }}"><div style="margin-top:9px;height:5px;background:#e3defb;border-radius:999px;overflow:hidden"><div style="{{ emp._bar }}"></div></div></sc-if>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px">
+          <div style="border:1px solid #f0f0f0;border-radius:11px;padding:11px 12px">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Sick</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:#3f3f46">{{ emp.sickU }}</span>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:11px;padding:11px 12px">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Birthday</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:#3f3f46">{{ emp.bdayU }}</span>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:11px;padding:11px 12px">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Maternity</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:#3f3f46">{{ emp.matU }}</span>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:11px;padding:11px 12px">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Paternity</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:#3f3f46">{{ emp.patU }}</span>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:11px;padding:11px 12px">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Unpaid</div>
+            <span style="font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:#3f3f46">{{ emp.unpaidU }}</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#a1a1aa;margin-bottom:10px">Request history</div>
+          <sc-if value="{{ emp._hasHistory }}" hint-placeholder-val="{{ true }}">
+            <div style="border:1px solid #f0f0f0;border-radius:11px;overflow:hidden">
+              <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+                <thead><tr>
+                  <th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;background:#fafafa;border-bottom:1px solid #f0f0f0">Type</th>
+                  <th style="text-align:left;padding:9px 8px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;background:#fafafa;border-bottom:1px solid #f0f0f0">Start</th>
+                  <th style="text-align:left;padding:9px 8px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;background:#fafafa;border-bottom:1px solid #f0f0f0">End</th>
+                  <th style="text-align:right;padding:9px 8px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;background:#fafafa;border-bottom:1px solid #f0f0f0">Days</th>
+                  <th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1a1aa;background:#fafafa;border-bottom:1px solid #f0f0f0">Status</th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ emp._history }}" as="h" hint-placeholder-count="4">
+                    <tr onClick="{{ h._open }}" style="cursor:pointer;border-bottom:1px solid #f6f6f6" style-hover="background:#fafafa">
+                      <td style="padding:10px 12px;color:#27272a;font-weight:500">{{ h.typeLabel }}</td>
+                      <td style="padding:10px 8px;color:#52525b">{{ h.startFmt }}</td>
+                      <td style="padding:10px 8px;color:#52525b">{{ h.endFmt }}</td>
+                      <td style="padding:10px 8px;text-align:right;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:#3f3f46">{{ h.daysLabel }}</td>
+                      <td style="padding:10px 12px"><span style="{{ h._statusChip }}"><span style="{{ h._statusDot }}"></span>{{ h.statusLabel }}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+          <sc-if value="{{ emp._noHistory }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px;border:1px dashed #e4e4e7;border-radius:10px;font-size:12.5px;color:#a1a1aa;text-align:center">No requests on record</div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px;padding:15px 22px;border-top:1px solid #f4f4f5;background:#fafafa">
+        <button onClick="{{ emp._record }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;font-size:13px;font-weight:600;color:#fff;background:#7B68EE;border:1px solid #7B68EE;border-radius:9px;cursor:pointer" style-hover="background:#5c4bd4">Record time off</button>
+        <button onClick="{{ emp._adjust }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;height:38px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:9px;cursor:pointer" style-hover="background:#f4f4f5;border-color:#d4d4d8">Adjust allocation</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== REQUEST DETAIL DIALOG ===================== -->
+  <sc-if value="{{ hasReq }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeReq }}" style="position:fixed;inset:0;z-index:1100;background:rgba(24,24,27,.42);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:64px 24px;animation:fin .15s ease">
+      <div onClick="{{ stop }}" data-screen-label="Request detail" style="width:468px;max-width:100%;background:#fff;border:1px solid #e4e4e7;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -25px rgba(24,24,27,.45);animation:min .2s ease">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #f4f4f5">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="{{ req._av }}">{{ req.initials }}</span>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:15.5px;font-weight:700;letter-spacing:-.01em">{{ req.empName }}</span>
+              <span style="font-size:12.5px;color:#a1a1aa">{{ req.typeLabel }} · {{ req.daysLabel }}</span>
+            </div>
+          </div>
+          <div onClick="{{ closeReq }}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#71717a;font-size:19px" style-hover="background:#f4f4f5;color:#18181b">×</div>
+        </div>
+
+        <sc-if value="{{ reqViewing }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:18px 20px;display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">Status</span><span style="{{ req._statusChip }}"><span style="{{ req._statusDot }}"></span>{{ req.statusLabel }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">Leave type</span><span style="color:#27272a;font-weight:500">{{ req.typeLabel }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">Start</span><span style="color:#27272a">{{ req.startFmt }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">End</span><span style="color:#27272a">{{ req.endFmt }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">Duration</span><span style="font-family:'Geist Mono',monospace;color:#27272a;font-weight:500">{{ req.daysLabel }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f6f6f6;font-size:13px"><span style="color:#a1a1aa">Source</span><span style="display:inline-flex;align-items:center;gap:6px;color:#27272a;font-weight:500"><span style="{{ req._srcDot }}"></span>{{ req.sourceLabel }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13px"><span style="color:#a1a1aa">Recorded</span><span style="color:#27272a">{{ req.createdFmt }}</span></div>
+            <sc-if value="{{ req.note }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:10px;padding:11px 13px;background:#fafafa;border:1px solid #f0f0f0;border-radius:9px;font-size:12.5px;color:#52525b;line-height:1.5">{{ req.note }}</div>
+            </sc-if>
+            <sc-if value="{{ req.isClickup }}" hint-placeholder-val="{{ false }}">
+              <a href="{{ req.url }}" target="_blank" style="margin-top:10px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#5c4bd4">Open ClickUp task<span style="font-size:11px">↗</span></a>
+            </sc-if>
+            <sc-if value="{{ req.hasEvent }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#52525b"><span style="width:6px;height:6px;border-radius:50%;background:#059669"></span>Has a linked calendar event</div>
+            </sc-if>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;padding:14px 20px;border-top:1px solid #f4f4f5;background:#fafafa;gap:9px">
+            <sc-if value="{{ req.cancellable }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ reqCancelStart }}" style="height:34px;padding:0 14px;font-size:13px;font-weight:600;color:#b91c1c;background:#fff;border:1px solid #fecaca;border-radius:8px;cursor:pointer" style-hover="background:#fef2f2">Cancel this time off…</button>
+            </sc-if>
+            <button onClick="{{ closeReq }}" style="height:34px;padding:0 14px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:8px;cursor:pointer" style-hover="background:#f4f4f5">Close</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ reqConfirming }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:18px 20px">
+            <div style="display:flex;gap:11px;align-items:flex-start;padding:14px 15px;background:#fef2f2;border:1px solid #fecaca;border-radius:11px">
+              <span style="width:20px;height:20px;border-radius:50%;background:#dc2626;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">!</span>
+              <span style="font-size:13px;color:#7f1d1d;line-height:1.55">{{ req.cancelWarn }}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #f4f4f5;background:#fafafa">
+            <button onClick="{{ reqCancelBack }}" style="height:34px;padding:0 14px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:8px;cursor:pointer" style-hover="background:#f4f4f5">Back</button>
+            <button onClick="{{ reqConfirmCancel }}" style="height:34px;padding:0 16px;font-size:13px;font-weight:600;color:#fff;background:#dc2626;border:1px solid #dc2626;border-radius:8px;cursor:pointer;box-shadow:0 1px 2px rgba(220,38,38,.25)" style-hover="background:#b91c1c">{{ req.cancelConfirmLabel }}</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== ACTION MODAL ===================== -->
+  <sc-if value="{{ hasModal }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:1150;background:rgba(24,24,27,.42);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:56px 24px;animation:fin .15s ease">
+      <div onClick="{{ stop }}" data-screen-label="Action dialog" style="width:492px;max-width:100%;background:#fff;border:1px solid #e4e4e7;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -25px rgba(24,24,27,.45);animation:min .2s ease;max-height:calc(100vh - 112px);display:flex;flex-direction:column">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #f4f4f5;flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:15.5px;font-weight:700;letter-spacing:-.01em">{{ modalTitle }}</span>
+            <span style="font-size:12.5px;color:#a1a1aa">{{ modalSubtitle }}</span>
+          </div>
+          <div onClick="{{ closeModal }}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#71717a;font-size:19px" style-hover="background:#f4f4f5;color:#18181b">×</div>
+        </div>
+        <div style="padding:19px 20px;display:flex;flex-direction:column;gap:15px;overflow:auto;flex:1">
+
+          <!-- RECORD -->
+          <sc-if value="{{ mRecord }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Person</label>
+              <select value="{{ modal.form.empId }}" onChange="{{ onFEmp }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)">
+                <option value="">Select person…</option>
+                <sc-for list="{{ activeEmpOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Leave type</label>
+              <select value="{{ modal.form.type }}" onChange="{{ onFType }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)">
+                <sc-for list="{{ leaveTypes }}" as="lt" hint-placeholder-count="9"><option value="{{ lt }}">{{ lt }}</option></sc-for>
+              </select>
+            </div>
+            <div style="display:flex;gap:11px">
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Start date</label><input type="date" value="{{ modal.form.start }}" onChange="{{ onFStart }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">End date</label><input type="date" value="{{ modal.form.end }}" onChange="{{ onFEnd }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Duration (days)</label>
+              <input type="number" step="0.5" min="0" value="{{ modal.form.dur }}" onChange="{{ onFDur }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)">
+              <div style="font-size:11.5px;color:#a1a1aa;margin-top:6px;line-height:1.45">Defaults to calendar days incl. both ends. Override for half days or to skip weekends.</div>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Note <span style="color:#c4c4c8;font-weight:400">(optional)</span></label>
+              <textarea value="{{ modal.form.note }}" onChange="{{ onFNote }}" placeholder="e.g. correcting a missed ClickUp sync" style="width:100%;min-height:56px;padding:9px 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;resize:vertical;line-height:1.5" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></textarea>
+            </div>
+          </sc-if>
+
+          <!-- ADD EMPLOYEE -->
+          <sc-if value="{{ mAddEmp }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Full name</label><input value="{{ modal.form.full }}" onChange="{{ onAFull }}" placeholder="Jordan Rivera" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Display name</label><input value="{{ modal.form.display }}" onChange="{{ onADisplay }}" placeholder="Jordan" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Work email</label><input type="email" value="{{ modal.form.email }}" onChange="{{ onAEmail }}" placeholder="jordan@acme.co" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            <div style="display:flex;gap:11px">
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Type</label><select value="{{ modal.form.type }}" onChange="{{ onAType }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><option value="employee">Employee</option><option value="freelancer">Freelancer</option></select></div>
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Start date <span style="color:#c4c4c8;font-weight:400">(optional)</span></label><input type="date" value="{{ modal.form.start }}" onChange="{{ onFStart }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            </div>
+            <sc-if value="{{ addShowVac }}" hint-placeholder-val="{{ true }}">
+              <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Vacation days ({{ year }})</label><input type="number" step="0.5" min="0" value="{{ modal.form.vac }}" onChange="{{ onFVac }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><div style="font-size:11.5px;color:#a1a1aa;margin-top:6px;line-height:1.45">Mid-year joiners are usually prorated (~1.25 days per remaining month).</div></div>
+            </sc-if>
+          </sc-if>
+
+          <!-- ADJUST ALLOCATION -->
+          <sc-if value="{{ mAdjust }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Person</label><select value="{{ modal.form.empId }}" onChange="{{ onFEmp }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><option value="">Select person…</option><sc-for list="{{ activeEmpOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></div>
+            <div style="display:flex;gap:11px">
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Year</label><select value="{{ modal.form.year }}" onChange="{{ onFYear }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><sc-for list="{{ yearOptions }}" as="y" hint-placeholder-count="3"><option value="{{ y }}">{{ y }}</option></sc-for></select></div>
+              <div style="flex:1"><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Vacation days</label><input type="number" step="0.5" min="0" value="{{ modal.form.vac }}" onChange="{{ onFVac }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></div>
+            </div>
+            <sc-if value="{{ adjHasCurrent }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#52525b;margin-top:-4px">Current allowance: <span style="font-family:'Geist Mono',monospace;font-weight:600;color:#18181b">{{ adjCurrentLabel }}</span></div></sc-if>
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Reason <span style="color:#dc2626;font-weight:400">(required)</span></label><textarea value="{{ modal.form.reason }}" onChange="{{ onFReason }}" placeholder="e.g. prorated for August start; carryover correction" style="width:100%;min-height:60px;padding:9px 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;resize:vertical;line-height:1.5" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"></textarea></div>
+          </sc-if>
+
+          <!-- CHANGE TYPE -->
+          <sc-if value="{{ mChangeType }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Person</label><select value="{{ modal.form.empId }}" onChange="{{ onFEmp }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><option value="">Select person…</option><sc-for list="{{ activeEmpOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></div>
+            <sc-if value="{{ ctHasPerson }}" hint-placeholder-val="{{ false }}"><div style="padding:11px 13px;background:#f6f4fe;border:1px solid #e3defb;border-radius:9px;font-size:13px;color:#4a3bc0;line-height:1.5">{{ ctMsg }}</div></sc-if>
+            <sc-if value="{{ ctNeedDays }}" hint-placeholder-val="{{ false }}"><div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Vacation days ({{ year }})</label><input type="number" step="0.5" min="0" value="{{ modal.form.vac }}" onChange="{{ onFVac }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><div style="font-size:11.5px;color:#a1a1aa;margin-top:6px">They have no {{ year }} allocation yet — set one to give them a balance.</div></div></sc-if>
+          </sc-if>
+
+          <!-- OFFBOARD -->
+          <sc-if value="{{ mOffboard }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size:12px;font-weight:500;color:#52525b;margin-bottom:6px;display:block">Person</label><select value="{{ modal.form.empId }}" onChange="{{ onFEmp }}" style="width:100%;height:36px;padding:0 11px;font-size:13.5px;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff;cursor:pointer" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)"><option value="">Select person…</option><sc-for list="{{ activeEmpOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></div>
+            <div style="padding:11px 13px;background:#fafafa;border:1px solid #f0f0f0;border-radius:9px;font-size:12.5px;color:#52525b;line-height:1.5">Offboarding hides the person from active views. Their history and allocations are kept for audit.</div>
+          </sc-if>
+
+          <!-- ROLLOVER -->
+          <sc-if value="{{ mRollover }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:13px;color:#52525b;line-height:1.5">Active employees without a 2027 allocation. Day counts are prefilled from their current allowance — edit any before creating.</div>
+            <sc-if value="{{ rollHasRows }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ rolloverRows }}" as="row" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border:1px solid #f0f0f0;border-radius:10px">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="{{ row._av }}">{{ row.initials }}</span><div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:13px;font-weight:600;color:#18181b">{{ row.name }}</span><span style="font-size:11px;color:#a1a1aa">was {{ row.current }} days</span></div></div>
+                    <input type="number" step="0.5" min="0" value="{{ row.value }}" onChange="{{ row._onChange }}" style="width:74px;height:34px;padding:0 10px;font-size:13.5px;font-family:'Geist Mono',monospace;text-align:right;border:1px solid #e4e4e7;border-radius:8px;outline:none;color:#18181b;background:#fff" style-focus="border-color:#7B68EE;box-shadow:0 0 0 3px rgba(123,104,238,.12)">
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ rollEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:16px;border:1px dashed #e4e4e7;border-radius:10px;font-size:12.5px;color:#a1a1aa;text-align:center">Every active employee already has a 2027 allocation.</div></sc-if>
+          </sc-if>
+
+          <!-- REVIEW -->
+          <sc-if value="{{ mReview }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fafafa;border:1px solid #f0f0f0;border-radius:11px;padding:15px 16px">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#a1a1aa;margin-bottom:12px">This will:</div>
+              <sc-for list="{{ modalReview }}" as="ln" hint-placeholder-count="3">
+                <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+                  <span style="width:5px;height:5px;border-radius:50%;background:#7B68EE;margin-top:7px;flex-shrink:0"></span>
+                  <span style="font-size:13.5px;color:#27272a;line-height:1.5">{{ ln }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #f4f4f5;background:#fafafa;flex-shrink:0">
+          <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ closeModal }}" style="height:34px;padding:0 14px;font-size:13px;font-weight:500;color:#71717a;background:transparent;border:none;border-radius:8px;cursor:pointer" style-hover="color:#18181b">Cancel</button>
+            <button onClick="{{ modalNext }}" disabled="{{ nextDisabled }}" style="{{ continueStyle }}">Continue</button>
+          </sc-if>
+          <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ modalBack }}" style="height:34px;padding:0 14px;font-size:13px;font-weight:500;color:#3f3f46;background:#fff;border:1px solid #e4e4e7;border-radius:8px;cursor:pointer" style-hover="background:#f4f4f5">Back</button>
+            <button onClick="{{ confirmModal }}" style="height:34px;padding:0 16px;font-size:13px;font-weight:600;color:#fff;background:#7B68EE;border:1px solid #7B68EE;border-radius:8px;cursor:pointer;box-shadow:0 1px 2px rgba(123,104,238,.25)" style-hover="background:#5c4bd4">{{ confirmLabel }}</button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== TOASTS ===================== -->
+  <div style="position:fixed;right:22px;bottom:22px;z-index:1200;display:flex;flex-direction:column;gap:9px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:11px;background:#18181b;color:#fafafa;padding:12px 15px;border-radius:11px;font-size:13px;box-shadow:0 12px 34px -8px rgba(24,24,27,.5);animation:tin .22s cubic-bezier(.22,1,.36,1);min-width:280px;max-width:380px">
+        <span style="{{ t._dot }}"></span>
+        <span style="flex:1;line-height:1.4">{{ t.msg }}</span>
+        <span onClick="{{ t._close }}" style="color:#8f8f96;cursor:pointer;font-size:17px;line-height:1;flex-shrink:0" style-hover="color:#fff">×</span>
+      </div>
+    </sc-for>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1304,&quot;height&quot;:900},&quot;team&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;People Ops&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;defaultYear&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;2026&quot;,&quot;options&quot;:[&quot;2025&quot;,&quot;2026&quot;,&quot;2027&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;startReadOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  TODAY = '2026-07-13';
+  YEARS = ['2025','2026','2027'];
+  LEAVE = ['Vacation','Sick','Birthday','Maternity','Paternity','Unpaid','Absent','Half day morning','Half day afternoon'];
+  AV = [
+    {bg:'#f1eefe',color:'#5c4bd4'},{bg:'#e3f6fd',color:'#0e7fab'},{bg:'#fdeaf3',color:'#c23b7e'},
+    {bg:'#eff6ff',color:'#0284c7'},{bg:'#faf5ff',color:'#7c3aed'},{bg:'#e3f6fd',color:'#0e7fab'},
+    {bg:'#fdeaf3',color:'#c23b7e'},{bg:'#f1eefe',color:'#5c4bd4'}
+  ];
+  STATUS = {
+    pending:{bg:'#fffbeb',color:'#b45309',border:'#fde68a',label:'Pending'},
+    approved:{bg:'#f0fdf4',color:'#15803d',border:'#bbf7d0',label:'Approved'},
+    denied:{bg:'#fef2f2',color:'#b91c1c',border:'#fecaca',label:'Denied'},
+    cancelled:{bg:'#f4f4f5',color:'#71717a',border:'#e4e4e7',label:'Cancelled'},
+    complete:{bg:'#eff6ff',color:'#1d4ed8',border:'#bfdbfe',label:'Complete'}
+  };
+  TYPEB = {
+    employee:{bg:'#f1eefe',color:'#5c4bd4',border:'#e3defb',label:'Employee'},
+    freelancer:{bg:'#f4f4f5',color:'#71717a',border:'#e4e4e7',label:'Freelancer'}
+  };
+
+  state = {
+    emps: [
+      {id:'e1',name:'Maria Santos',full:'Maria Santos',email:'maria@acme.co',type:'employee',inactive:false},
+      {id:'e2',name:'James Okafor',full:'James Okafor',email:'james@acme.co',type:'employee',inactive:false},
+      {id:'e3',name:'Priya Nair',full:'Priya Nair',email:'priya@acme.co',type:'employee',inactive:false},
+      {id:'e4',name:'Tom Becker',full:'Tom Becker',email:'tom@acme.co',type:'employee',inactive:false},
+      {id:'e5',name:'Lena Vogel',full:'Lena Vogel',email:'lena@acme.co',type:'employee',inactive:false},
+      {id:'e6',name:'David Kim',full:'David Kim',email:'david@acme.co',type:'employee',inactive:false},
+      {id:'e7',name:'Sofia Rossi',full:'Sofia Rossi',email:'sofia@acme.co',type:'employee',inactive:false},
+      {id:'e8',name:'Aiden Walsh',full:'Aiden Walsh',email:'aiden@contractor.co',type:'freelancer',inactive:false},
+      {id:'e9',name:'Grace Liu',full:'Grace Liu',email:'grace@acme.co',type:'employee',inactive:false},
+      {id:'e10',name:'Marcus Bello',full:'Marcus Bello',email:'marcus@contractor.co',type:'freelancer',inactive:false},
+      {id:'e11',name:'Nora Haddad',full:'Nora Haddad',email:'nora@acme.co',type:'employee',inactive:true},
+      {id:'e12',name:'Erik Johansson',full:'Erik Johansson',email:'erik@acme.co',type:'employee',inactive:false}
+    ],
+    allocs: [
+      {empId:'e1',year:'2025',vac:20},{empId:'e1',year:'2026',vac:20},{empId:'e1',year:'2027',vac:20},
+      {empId:'e2',year:'2025',vac:25},{empId:'e2',year:'2026',vac:25},
+      {empId:'e3',year:'2025',vac:20},{empId:'e3',year:'2026',vac:20},
+      {empId:'e4',year:'2025',vac:18},{empId:'e4',year:'2026',vac:18},
+      {empId:'e5',year:'2025',vac:22},{empId:'e5',year:'2026',vac:22},
+      {empId:'e6',year:'2025',vac:20},{empId:'e6',year:'2026',vac:20},
+      {empId:'e7',year:'2025',vac:24},{empId:'e7',year:'2026',vac:24},
+      {empId:'e9',year:'2025',vac:21},{empId:'e9',year:'2026',vac:21},
+      {empId:'e11',year:'2025',vac:20},{empId:'e11',year:'2026',vac:20},
+      {empId:'e12',year:'2025',vac:23},{empId:'e12',year:'2026',vac:23}
+    ],
+    reqs: [
+      {id:'r1',empId:'e1',type:'Vacation',status:'approved',source:'clickup',start:'2026-08-04',end:'2026-08-06',days:3,note:'',created:'2026-06-30',url:'https://app.clickup.com/t/86a1',hasEvent:true},
+      {id:'r2',empId:'e1',type:'Sick',status:'complete',source:'manual',start:'2026-03-11',end:'2026-03-11',days:1,note:'',created:'2026-03-11'},
+      {id:'r3',empId:'e1',type:'Vacation',status:'cancelled',source:'clickup',start:'2026-04-02',end:'2026-04-04',days:3,note:'Trip cancelled',created:'2026-03-01',url:'https://app.clickup.com/t/86a3'},
+      {id:'r4',empId:'e1',type:'Vacation',status:'complete',source:'clickup',start:'2025-07-01',end:'2025-07-10',days:8,note:'',created:'2025-06-15',url:'https://app.clickup.com/t/86a4'},
+      {id:'r5',empId:'e2',type:'Vacation',status:'approved',source:'clickup',start:'2026-07-20',end:'2026-07-31',days:10,note:'Summer holiday',created:'2026-05-30',url:'https://app.clickup.com/t/86a5',hasEvent:true},
+      {id:'r6',empId:'e2',type:'Vacation',status:'complete',source:'clickup',start:'2026-02-17',end:'2026-02-27',days:9,note:'',created:'2026-01-30',url:'https://app.clickup.com/t/86a6'},
+      {id:'r7',empId:'e2',type:'Vacation',status:'complete',source:'clickup',start:'2025-12-22',end:'2025-12-31',days:8,note:'Holidays',created:'2025-11-30',url:'https://app.clickup.com/t/86a7'},
+      {id:'r8',empId:'e2',type:'Vacation',status:'approved',source:'manual',start:'2026-09-01',end:'2026-09-05',days:5,note:'Recorded from email request',created:'2026-06-20'},
+      {id:'r9',empId:'e3',type:'Vacation',status:'pending',source:'clickup',start:'2026-07-20',end:'2026-07-24',days:5,note:'',created:'2026-07-01',url:'https://app.clickup.com/t/86a9'},
+      {id:'r10',empId:'e3',type:'Birthday',status:'approved',source:'clickup',start:'2026-09-15',end:'2026-09-15',days:1,note:'',created:'2026-06-02',url:'https://app.clickup.com/t/86b0',hasEvent:true},
+      {id:'r11',empId:'e4',type:'Vacation',status:'complete',source:'manual',start:'2026-01-06',end:'2026-01-16',days:9,note:'',created:'2026-01-06'},
+      {id:'r12',empId:'e4',type:'Vacation',status:'approved',source:'clickup',start:'2026-06-01',end:'2026-06-09',days:9,note:'',created:'2026-05-10',url:'https://app.clickup.com/t/86b2',hasEvent:true},
+      {id:'r13',empId:'e5',type:'Vacation',status:'complete',source:'clickup',start:'2026-04-01',end:'2026-04-09',days:7,note:'',created:'2026-03-01',url:'https://app.clickup.com/t/86b3'},
+      {id:'r14',empId:'e5',type:'Birthday',status:'approved',source:'clickup',start:'2026-05-20',end:'2026-05-20',days:1,note:'',created:'2026-04-20',url:'https://app.clickup.com/t/86b4'},
+      {id:'r15',empId:'e5',type:'Half day afternoon',status:'complete',source:'manual',start:'2026-06-18',end:'2026-06-18',days:0.5,note:'Appointment',created:'2026-06-18'},
+      {id:'r16',empId:'e6',type:'Vacation',status:'approved',source:'clickup',start:'2026-07-14',end:'2026-07-15',days:2,note:'',created:'2026-06-28',url:'https://app.clickup.com/t/86b6',hasEvent:true},
+      {id:'r17',empId:'e7',type:'Maternity',status:'approved',source:'manual',start:'2026-10-01',end:'2026-12-24',days:60,note:'12 weeks',created:'2026-05-20'},
+      {id:'r18',empId:'e7',type:'Vacation',status:'complete',source:'clickup',start:'2026-03-10',end:'2026-03-14',days:5,note:'',created:'2026-02-20',url:'https://app.clickup.com/t/86b8'},
+      {id:'r19',empId:'e8',type:'Unpaid',status:'approved',source:'manual',start:'2026-06-30',end:'2026-07-04',days:5,note:'Contractor break',created:'2026-06-01'},
+      {id:'r20',empId:'e9',type:'Vacation',status:'complete',source:'clickup',start:'2026-03-02',end:'2026-03-13',days:10,note:'',created:'2026-02-10',url:'https://app.clickup.com/t/86c0'},
+      {id:'r21',empId:'e9',type:'Vacation',status:'approved',source:'clickup',start:'2026-11-16',end:'2026-11-24',days:7,note:'',created:'2026-06-15',url:'https://app.clickup.com/t/86c1'},
+      {id:'r22',empId:'e9',type:'Vacation',status:'denied',source:'clickup',start:'2026-05-01',end:'2026-05-09',days:7,note:'Insufficient balance',created:'2026-04-15',url:'https://app.clickup.com/t/86c2'},
+      {id:'r23',empId:'e10',type:'Absent',status:'complete',source:'manual',start:'2026-05-05',end:'2026-05-05',days:1,note:'No-show, unpaid',created:'2026-05-06'},
+      {id:'r24',empId:'e10',type:'Sick',status:'pending',source:'clickup',start:'2026-07-13',end:'2026-07-13',days:1,note:'',created:'2026-07-13',url:'https://app.clickup.com/t/86c4'},
+      {id:'r25',empId:'e12',type:'Paternity',status:'approved',source:'clickup',start:'2026-11-03',end:'2026-11-14',days:10,note:'',created:'2026-06-10',url:'https://app.clickup.com/t/86c5',hasEvent:true},
+      {id:'r26',empId:'e12',type:'Vacation',status:'complete',source:'manual',start:'2026-02-03',end:'2026-02-07',days:5,note:'',created:'2026-02-03'},
+      {id:'r27',empId:'e11',type:'Vacation',status:'complete',source:'clickup',start:'2026-01-12',end:'2026-01-16',days:5,note:'',created:'2026-01-05',url:'https://app.clickup.com/t/86c7'},
+      {id:'r28',empId:'e11',type:'Half day morning',status:'complete',source:'manual',start:'2026-02-10',end:'2026-02-10',days:0.5,note:'',created:'2026-02-10'}
+    ],
+    tab:'balances', year:'2026',
+    search:'', showInactive:false, readOnly:false,
+    logYear:'all', logStatus:'all', logPerson:'all',
+    menuOpen:false, openEmpId:null, reqDialog:null, modal:null,
+    toasts:[], toastSeq:0
+  };
+
+  componentDidMount(){
+    const p=this.props||{};
+    const patch={};
+    if(p.defaultYear && this.YEARS.includes(String(p.defaultYear))) patch.year=String(p.defaultYear);
+    if(p.startReadOnly) patch.readOnly=true;
+    if(Object.keys(patch).length) this.setState(patch);
+  }
+
+  // ---- helpers ----
+  fmt(iso){ if(!iso) return '\u2014'; const [y,m,d]=iso.split('-').map(Number); return this.MONTHS[m-1]+' '+d+', '+y; }
+  daysLabel(d){ if(d===0.5) return '\u00bd day'; if(d===1) return '1 day'; return d+' days'; }
+  computeDays(start,end){
+    if(!start) return 0;
+    const s=Date.parse(start), e=end?Date.parse(end):s;
+    if(isNaN(s)||isNaN(e)||e<s) return 0;
+    return Math.round((e-s)/86400000)+1;
+  }
+  initials(name){ return (name||'?').split(' ').map(w=>w[0]).slice(0,2).join(''); }
+  avIndex(id){ const i=this.state.emps.findIndex(x=>x.id===id); return i<0?0:i; }
+  avStyle(i,size){
+    const a=this.AV[i%this.AV.length]; const s=size||32;
+    return {width:s+'px',height:s+'px',borderRadius:'50%',display:'inline-flex',alignItems:'center',justifyContent:'center',
+      fontSize:(size>=44?15:size<=26?11:12)+'px',fontWeight:600,background:a.bg,color:a.color,flexShrink:0,letterSpacing:'.01em'};
+  }
+  typeBadge(type){
+    const b=this.TYPEB[type]||this.TYPEB.employee;
+    return {style:{display:'inline-flex',alignItems:'center',fontSize:'10.5px',fontWeight:600,letterSpacing:'.02em',color:b.color,background:b.bg,border:'1px solid '+b.border,padding:'2px 7px',borderRadius:'6px'},label:b.label};
+  }
+  statusStyle(st){
+    const c=this.STATUS[st];
+    return {chip:{display:'inline-flex',alignItems:'center',gap:'6px',padding:'3px 9px',borderRadius:'999px',fontSize:'11.5px',fontWeight:600,background:c.bg,color:c.color,border:'1px solid '+c.border},
+      dot:{width:'6px',height:'6px',borderRadius:'50%',background:c.color,flexShrink:0}, label:c.label};
+  }
+  emp(id){ return this.state.emps.find(x=>x.id===id)||{name:'\u2014'}; }
+  allocOf(empId,year){ const a=this.state.allocs.find(x=>x.empId===empId&&x.year===year); return a?a.vac:null; }
+  mergeAlloc(arr,empId,year,vac){
+    const i=arr.findIndex(a=>a.empId===empId&&a.year===year);
+    if(i>=0){ const n=[...arr]; n[i]={...n[i],vac}; return n; }
+    return [...arr,{empId,year,vac}];
+  }
+  usedByType(empId,year){
+    const m={Vacation:0,Sick:0,Birthday:0,Maternity:0,Paternity:0,Unpaid:0};
+    this.state.reqs.forEach(r=>{
+      if(r.empId!==empId) return;
+      if(r.status!=='approved'&&r.status!=='complete') return;
+      if(r.start.slice(0,4)!==year) return;
+      const t=r.type;
+      if(t==='Half day morning'||t==='Half day afternoon') m.Vacation+=r.days;
+      else if(t==='Absent') m.Unpaid+=r.days;
+      else if(m[t]!=null) m[t]+=r.days;
+    });
+    Object.keys(m).forEach(k=>m[k]=+m[k].toFixed(2));
+    return m;
+  }
+  numCell(v){ return v===0? '\u00b7' : (''+v); }
+
+  // ---- nav / filter handlers ----
+  onTabBalances=()=>this.setState({tab:'balances'});
+  onTabLog=()=>this.setState({tab:'log'});
+  onSearch=e=>this.setState({search:e.target.value});
+  onToggleInactive=()=>this.setState(s=>({showInactive:!s.showInactive}));
+  onToggleReadOnly=()=>this.setState(s=>({readOnly:!s.readOnly}));
+  setYear=(y)=>this.setState({year:y});
+  onLogYear=e=>this.setState({logYear:e.target.value});
+  onLogStatus=e=>this.setState({logStatus:e.target.value});
+  onLogPerson=e=>this.setState({logPerson:e.target.value});
+  stop=e=>e.stopPropagation();
+
+  // ---- menu ----
+  toggleMenu=()=>this.setState(s=>({menuOpen:!s.menuOpen}));
+  closeMenu=()=>this.setState({menuOpen:false});
+  onMenuRecord=()=>this.openRecord('');
+  onMenuAddEmp=()=>this.setState({menuOpen:false,modal:{kind:'addEmp',step:1,form:{full:'',display:'',email:'',type:'employee',start:'',vac:'15'}}});
+  onMenuAdjust=()=>this.openAdjust('');
+  onMenuChangeType=()=>this.setState({menuOpen:false,modal:{kind:'changeType',step:1,form:{empId:'',vac:'15'}}});
+  onMenuOffboard=()=>this.setState({menuOpen:false,modal:{kind:'offboard',step:1,form:{empId:''}}});
+  onMenuRollover=()=>{
+    const roll={};
+    this.state.emps.filter(e=>!e.inactive).forEach(e=>{
+      const cur=this.allocOf(e.id,this.state.year);
+      if(cur!=null && this.allocOf(e.id,'2027')==null) roll[e.id]=String(cur);
+    });
+    this.setState({menuOpen:false,modal:{kind:'rollover',step:1,form:{rollover:roll}}});
+  };
+
+  // ---- drawer ----
+  openEmp=(id)=>this.setState({openEmpId:id});
+  closeEmp=()=>this.setState({openEmpId:null});
+
+  // ---- req dialog ----
+  openReq=(id)=>this.setState({reqDialog:{reqId:id,confirming:false}});
+  closeReq=()=>this.setState({reqDialog:null});
+  reqCancelStart=()=>this.setState(s=>({reqDialog:{...s.reqDialog,confirming:true}}));
+  reqCancelBack=()=>this.setState(s=>({reqDialog:{...s.reqDialog,confirming:false}}));
+  reqConfirmCancel=()=>{
+    if(this.state.readOnly){ this.addToast('Read-only mode is ON \u2014 no changes were made.','error'); this.setState({reqDialog:null}); return; }
+    const id=this.state.reqDialog.reqId;
+    this.setState(s=>({reqs:s.reqs.map(r=>r.id===id?{...r,status:'cancelled'}:r),reqDialog:null}));
+    this.addToast('Request cancelled in the database');
+  };
+
+  // ---- modal open ----
+  openRecord=(id)=>this.setState({menuOpen:false,openEmpId:null,modal:{kind:'record',step:1,form:{empId:id||'',type:'Vacation',start:'',end:'',dur:'',note:''}}});
+  openAdjust=(id)=>{
+    const y=this.state.year; const cur=id?this.allocOf(id,y):null;
+    this.setState({menuOpen:false,openEmpId:null,modal:{kind:'adjustAlloc',step:1,form:{empId:id||'',year:y,vac:cur!=null?String(cur):'',reason:''}}});
+  };
+
+  closeModal=()=>this.setState({modal:null});
+  modalNext=()=>this.setState(s=>({modal:{...s.modal,step:2}}));
+  modalBack=()=>this.setState(s=>({modal:{...s.modal,step:1}}));
+  updForm=(patch)=>this.setState(s=>({modal:{...s.modal,form:{...s.modal.form,...patch}}}));
+  onFEmp=e=>this.updForm({empId:e.target.value});
+  onFType=e=>this.updForm({type:e.target.value});
+  onFStart=e=>{ const start=e.target.value; this.setState(s=>{ const f=s.modal.form; const dur=this.computeDays(start,f.end||start); return {modal:{...s.modal,form:{...f,start,dur:dur?String(dur):''}}}; }); };
+  onFEnd=e=>{ const end=e.target.value; this.setState(s=>{ const f=s.modal.form; const dur=this.computeDays(f.start,end||f.start); return {modal:{...s.modal,form:{...f,end,dur:dur?String(dur):f.dur}}}; }); };
+  onFDur=e=>this.updForm({dur:e.target.value});
+  onFNote=e=>this.updForm({note:e.target.value});
+  onAFull=e=>this.updForm({full:e.target.value});
+  onADisplay=e=>this.updForm({display:e.target.value});
+  onAEmail=e=>this.updForm({email:e.target.value});
+  onAType=e=>this.updForm({type:e.target.value});
+  onFVac=e=>this.updForm({vac:e.target.value});
+  onFYear=e=>{ const year=e.target.value; const id=this.state.modal.form.empId; const cur=id?this.allocOf(id,year):null; this.updForm({year,vac:cur!=null?String(cur):this.state.modal.form.vac}); };
+  onFReason=e=>this.updForm({reason:e.target.value});
+  onRoll=(id,val)=>this.setState(s=>({modal:{...s.modal,form:{...s.modal.form,rollover:{...s.modal.form.rollover,[id]:val}}}}));
+
+  confirmModal=()=>{
+    const m=this.state.modal; if(!m) return;
+    if(this.state.readOnly){ this.addToast('Read-only mode is ON \u2014 no changes were made.','error'); this.setState({modal:null}); return; }
+    const f=m.form;
+    if(m.kind==='record'){
+      const emp=this.emp(f.empId); const days=Number(f.dur)||0;
+      const st = f.start < this.TODAY ? 'complete':'approved';
+      const nr={id:'r'+Date.now(),empId:f.empId,type:f.type,status:st,source:'manual',start:f.start,end:f.end||f.start,days,note:f.note||'',created:this.TODAY};
+      this.setState(s=>({reqs:[nr,...s.reqs],modal:null}));
+      this.addToast('Recorded '+this.daysLabel(days)+' of '+f.type.toLowerCase()+' for '+emp.name);
+    } else if(m.kind==='addEmp'){
+      const id='e'+Date.now(); const disp=f.display||f.full;
+      const nemp={id,name:disp,full:f.full,email:f.email,type:f.type,inactive:false};
+      const extra = f.type==='employee'? [{empId:id,year:this.state.year,vac:Number(f.vac)||0}] : [];
+      this.setState(s=>({emps:[...s.emps,nemp],allocs:[...s.allocs,...extra],modal:null}));
+      this.addToast('Added '+disp+(f.type==='employee'?' \u00b7 '+(Number(f.vac)||0)+'-day allocation created':' \u00b7 freelancer'));
+    } else if(m.kind==='adjustAlloc'){
+      const emp=this.emp(f.empId);
+      this.setState(s=>({allocs:this.mergeAlloc(s.allocs,f.empId,f.year,Number(f.vac)||0),modal:null}));
+      this.addToast(emp.name+"'s "+f.year+' allocation set to '+(Number(f.vac)||0)+' days');
+    } else if(m.kind==='changeType'){
+      const emp=this.emp(f.empId); const nt=emp.type==='employee'?'freelancer':'employee';
+      const needAlloc = nt==='employee' && this.allocOf(f.empId,this.state.year)==null;
+      this.setState(s=>{
+        const emps=s.emps.map(x=>x.id===f.empId?{...x,type:nt}:x);
+        let allocs=s.allocs;
+        if(needAlloc) allocs=this.mergeAlloc(allocs,f.empId,this.state.year,Number(f.vac)||0);
+        return {emps,allocs,modal:null};
+      });
+      this.addToast(emp.name+' is now a '+nt);
+    } else if(m.kind==='offboard'){
+      const emp=this.emp(f.empId);
+      this.setState(s=>({emps:s.emps.map(x=>x.id===f.empId?{...x,inactive:true}:x),modal:null}));
+      this.addToast(emp.name+' marked inactive \u00b7 history kept');
+    } else if(m.kind==='rollover'){
+      const entries=Object.entries(f.rollover||{});
+      this.setState(s=>{ let na=[...s.allocs]; entries.forEach(([id,v])=>{ na=this.mergeAlloc(na,id,'2027',Number(v)||0); }); return {allocs:na,modal:null}; });
+      this.addToast('Created '+entries.length+' allocation'+(entries.length===1?'':'s')+' for 2027');
+    }
+  };
+
+  onExport=()=>{
+    const rows=this.state.reqs;
+    const head=['Name','Leave type','Status','Source','Start','End','Days','Note'];
+    const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const nameOf=id=>this.emp(id).name;
+    const body=rows.map(r=>[nameOf(r.empId),r.type,r.status,r.source,r.start,r.end||r.start,r.days,r.note||''].map(esc).join(','));
+    const csv=[head.map(esc).join(','),...body].join('\n');
+    try{ const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pto-requests.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }catch(err){}
+    this.addToast('Exported '+rows.length+' requests to CSV');
+  };
+
+  addToast=(msg,variant)=>{
+    const id='t'+(this.state.toastSeq+1);
+    this.setState(s=>({toasts:[...s.toasts,{id,msg,variant:variant||'success'}],toastSeq:s.toastSeq+1}));
+    setTimeout(()=>this.dismiss(id),4600);
+  };
+  dismiss=(id)=>this.setState(s=>({toasts:s.toasts.filter(t=>t.id!==id)}));
+
+  enrichReq(r){
+    const emp=this.emp(r.empId);
+    const ss=this.statusStyle(r.status);
+    return {id:r.id, empName:emp.name, initials:this.initials(emp.name), _av:this.avStyle(this.avIndex(r.empId),26),
+      typeLabel:r.type, startFmt:this.fmt(r.start), endFmt:this.fmt(r.end||r.start), daysLabel:this.daysLabel(r.days),
+      _statusChip:ss.chip, _statusDot:ss.dot, statusLabel:ss.label,
+      sourceLabel:r.source==='clickup'?'ClickUp':'Manual',
+      _srcDot:{width:'6px',height:'6px',borderRadius:'50%',flexShrink:0,background:r.source==='clickup'?'#7B68EE':'#a1a1aa'},
+      _open:()=>this.openReq(r.id)};
+  }
+
+  balanceView(id,year){
+    const used=this.usedByType(id,year);
+    const allot=this.allocOf(id,year);
+    const rem = allot!=null? +(allot-used.Vacation).toFixed(2) : null;
+    const low = allot!=null && rem>0 && rem<=3;
+    const none = allot!=null && rem<=0;
+    const pct = allot!=null? Math.max(3,Math.min(100,Math.round(rem/allot*100))) : 0;
+    return {used,allot,rem,low,none,pct};
+  }
+
+  renderVals(){
+    const s=this.state;
+    const y=s.year;
+    const tabStyle=(active)=>({padding:'13px 3px',marginRight:'22px',fontSize:'13px',fontWeight:active?600:500,
+      color:active?'#18181b':'#71717a',cursor:'pointer',borderBottom:'2px solid '+(active?'#7B68EE':'transparent'),marginBottom:'-1px'});
+
+    // ---- balances rows ----
+    const rows = s.emps
+      .filter(e=> s.showInactive || !e.inactive)
+      .filter(e=> e.name.toLowerCase().includes(s.search.toLowerCase()) || e.email.toLowerCase().includes(s.search.toLowerCase()))
+      .map(e=>{
+        const bv=this.balanceView(e.id,y);
+        const tb=this.typeBadge(e.type);
+        const remColor = bv.none? '#dc2626' : (bv.low? '#dc2626':'#18181b');
+        return {
+          id:e.id, name:e.name, email:e.email, initials:this.initials(e.name),
+          _av:this.avStyle(this.avIndex(e.id),32),
+          _typeBadge:tb.style, typeLabel:tb.label,
+          allotLabel: bv.allot!=null? (''+bv.allot) : '\u2014',
+          vacU:this.numCell(bv.used.Vacation), sickU:this.numCell(bv.used.Sick), bdayU:this.numCell(bv.used.Birthday),
+          matU:this.numCell(bv.used.Maternity), patU:this.numCell(bv.used.Paternity), unpaidU:this.numCell(bv.used.Unpaid),
+          remLabel: bv.allot!=null? (''+bv.rem) : '\u2014',
+          remSub: bv.allot!=null? ('/ '+bv.allot) : 'no allocation',
+          _remStyle:{fontFamily:"'Geist Mono',monospace",fontVariantNumeric:'tabular-nums',fontSize:'22px',fontWeight:600,lineHeight:1,color:remColor},
+          _hasChip: bv.low||bv.none, chipLabel: bv.none?'NONE LEFT':'LOW',
+          _chipStyle:{marginLeft:'3px',fontSize:'9px',fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase',color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 5px',borderRadius:'5px'},
+          _hasBar: bv.allot!=null,
+          _bar:{width:bv.pct+'%',height:'100%',borderRadius:'999px',background:(bv.low||bv.none)?'#dc2626':'#7B68EE',transition:'width .3s'},
+          _rowStyle:{cursor:'pointer',borderBottom:'1px solid #f4f4f5',opacity:e.inactive?0.5:1},
+          _open:()=>this.openEmp(e.id)
+        };
+      });
+
+    // ---- request log rows ----
+    const reqRows = s.reqs.map(r=>({raw:r,...this.enrichReq(r)}))
+      .filter(o=> (s.logYear==='all'||o.raw.start.slice(0,4)===s.logYear)
+        && (s.logStatus==='all'||o.raw.status===s.logStatus)
+        && (s.logPerson==='all'||o.empName===s.logPerson))
+      .sort((a,b)=>a.raw.start<b.raw.start?1:-1);
+    const years=[...new Set(s.reqs.map(r=>r.start.slice(0,4)))].sort().reverse();
+    const people=[...new Set(s.emps.map(e=>e.name))].sort();
+
+    // ---- drawer ----
+    let emp=null; let hasEmp=!!s.openEmpId;
+    if(hasEmp){
+      const base=s.emps.find(x=>x.id===s.openEmpId);
+      if(base){
+        const bv=this.balanceView(base.id,y);
+        const tb=this.typeBadge(base.type);
+        const remColor=bv.none||bv.low?'#dc2626':'#7B68EE';
+        const hist=s.reqs.filter(r=>r.empId===base.id).sort((a,b)=>a.start<b.start?1:-1).map(r=>this.enrichReq(r));
+        emp={
+          name:base.name, email:base.email, inactive:base.inactive, initials:this.initials(base.name),
+          _avLg:this.avStyle(this.avIndex(base.id),44), _typeBadge:tb.style, typeLabel:tb.label,
+          allotLabel: bv.allot!=null?(''+bv.allot):'\u2014',
+          vacU:''+bv.used.Vacation, sickU:''+bv.used.Sick, bdayU:''+bv.used.Birthday, matU:''+bv.used.Maternity, patU:''+bv.used.Paternity, unpaidU:''+bv.used.Unpaid,
+          remLabel: bv.allot!=null?(''+bv.rem):'\u2014',
+          _remStyle:{fontFamily:"'Geist Mono',monospace",fontVariantNumeric:'tabular-nums',fontSize:'26px',fontWeight:600,lineHeight:1,color:remColor},
+          _hasChip: bv.low||bv.none, chipLabel: bv.none?'NONE LEFT':'LOW',
+          _chipStyle:{fontSize:'9px',fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase',color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 5px',borderRadius:'5px'},
+          _hasBar: bv.allot!=null, _bar:{width:bv.pct+'%',height:'100%',borderRadius:'999px',background:(bv.low||bv.none)?'#dc2626':'#7B68EE'},
+          _history:hist, _hasHistory:hist.length>0, _noHistory:hist.length===0,
+          _record:()=>this.openRecord(base.id), _adjust:()=>this.openAdjust(base.id)
+        };
+      } else hasEmp=false;
+    }
+
+    // ---- req dialog ----
+    let req=null; let hasReq=!!s.reqDialog;
+    if(hasReq){
+      const rr=s.reqs.find(x=>x.id===s.reqDialog.reqId);
+      if(rr){
+        const er=this.enrichReq(rr);
+        const cancellable=(rr.status==='pending'||rr.status==='approved');
+        req={...er, note:rr.note, createdFmt:this.fmt(rr.created), isClickup:rr.source==='clickup', url:rr.url||'#', hasEvent:!!rr.hasEvent,
+          cancellable,
+          cancelWarn: rr.source==='clickup'
+            ? 'This request came from ClickUp. The recommended way to cancel it is to set the ClickUp task to canceled \u2014 the automation then also removes the calendar event and Everhour block. Cancelling here only updates the database.'
+            : 'This will mark the request cancelled in the database. Nothing is deleted.',
+          cancelConfirmLabel: rr.source==='clickup'?'Cancel in database anyway':'Confirm cancel'};
+      } else hasReq=false;
+    }
+    const reqViewing = hasReq && !s.reqDialog.confirming;
+    const reqConfirming = hasReq && !!s.reqDialog.confirming;
+
+    // ---- modal ----
+    const m=s.modal;
+    let modalTitle='',modalSubtitle='',modalReview=[],confirmLabel='Confirm',nextDisabled=true;
+    let ctMsg='',ctNeedDays=false,ctHasPerson=false,adjHasCurrent=false,adjCurrentLabel='',addShowVac=false;
+    let rolloverRows=[],rollHasRows=false,rollEmpty=false;
+    const mRecord=!!m&&m.kind==='record'&&m.step===1;
+    const mAddEmp=!!m&&m.kind==='addEmp'&&m.step===1;
+    const mAdjust=!!m&&m.kind==='adjustAlloc'&&m.step===1;
+    const mChangeType=!!m&&m.kind==='changeType'&&m.step===1;
+    const mOffboard=!!m&&m.kind==='offboard'&&m.step===1;
+    const mRollover=!!m&&m.kind==='rollover'&&m.step===1;
+    const mReview=!!m&&m.step===2;
+    const isStep1=!!m&&m.step===1, isStep2=!!m&&m.step===2;
+    if(m){
+      const f=m.form; const me=s.emps.find(x=>x.id===f.empId);
+      if(m.kind==='record'){
+        modalTitle='Record time off'; modalSubtitle='Add a historical entry — no approvals, no sync';
+        const days=Number(f.dur)||0;
+        nextDisabled=!(f.empId&&f.type&&f.start&&days>0);
+        if(me){
+          const affectsVac = f.type==='Vacation'||f.type==='Half day morning'||f.type==='Half day afternoon';
+          const lines=[
+            'Add a '+f.type.toLowerCase()+' entry for '+me.name+' ('+this.daysLabel(days)+')',
+            (f.end&&f.end!==f.start? this.fmt(f.start)+' \u2192 '+this.fmt(f.end) : this.fmt(f.start)),
+            'Record it as a Manual entry in the request log'
+          ];
+          if(affectsVac){
+            const bv=this.balanceView(me.id,f.start.slice(0,4));
+            if(bv.allot!=null) lines.push('Vacation remaining: '+bv.rem+' \u2192 '+(+(bv.rem-days).toFixed(2)));
+          }
+          lines.push('NOT create a calendar event or Everhour block \u2014 this records history only.');
+          modalReview=lines;
+        }
+      } else if(m.kind==='addEmp'){
+        modalTitle='Add employee'; modalSubtitle='Create a person and their first allocation';
+        addShowVac = f.type==='employee';
+        nextDisabled=!(f.full.trim()&&f.email.trim());
+        const disp=f.display||f.full;
+        const lines=['Add '+disp+' as a '+f.type, 'Set their work email to '+(f.email||'\u2014')];
+        if(f.start) lines.push('Start date: '+this.fmt(f.start));
+        if(f.type==='employee') lines.push('Create a '+y+' allocation of '+(Number(f.vac)||0)+' vacation days');
+        else lines.push('Freelancers don\u2019t receive a vacation allocation');
+        modalReview=lines;
+      } else if(m.kind==='adjustAlloc'){
+        modalTitle='Adjust allocation'; modalSubtitle='Set the vacation allowance for a year';
+        const cur = f.empId? this.allocOf(f.empId,f.year) : null;
+        adjHasCurrent = cur!=null; adjCurrentLabel = cur!=null? (cur+' days') : '';
+        nextDisabled=!(f.empId&&f.vac!==''&&!isNaN(Number(f.vac))&&f.reason.trim());
+        if(me){
+          modalReview=[
+            'Set '+me.name+'\u2019s '+f.year+' vacation allocation to '+(Number(f.vac)||0)+' days'+(cur!=null?' (was '+cur+')':''),
+            'Recompute their remaining balance from this new allowance',
+            'Reason: '+(f.reason||'\u2014')
+          ];
+        }
+      } else if(m.kind==='changeType'){
+        modalTitle='Change employment type'; modalSubtitle='Switch between employee and freelancer';
+        ctHasPerson=!!me;
+        if(me){
+          const nt=me.type==='employee'?'freelancer':'employee';
+          ctMsg = me.name+' is currently a '+me.type+' \u2014 this will make them '+(nt==='employee'?'an employee':'a freelancer')+'.';
+          ctNeedDays = nt==='employee' && this.allocOf(me.id,y)==null;
+          const lines=['Change '+me.name+' from '+me.type+' to '+nt];
+          if(ctNeedDays) lines.push('Create a '+y+' allocation of '+(Number(f.vac)||0)+' vacation days');
+          if(nt==='freelancer') lines.push('Their existing allocations stay on record');
+          modalReview=lines;
+        }
+        nextDisabled=!(f.empId && (!ctNeedDays || (f.vac!==''&&!isNaN(Number(f.vac)))));
+      } else if(m.kind==='offboard'){
+        modalTitle='Offboard employee'; modalSubtitle='Mark a person inactive';
+        nextDisabled=!f.empId;
+        if(me) modalReview=['Mark '+me.name+' as inactive.','Keep all their PTO history and allocations untouched.'];
+      } else if(m.kind==='rollover'){
+        modalTitle='Year rollover \u2192 2027'; modalSubtitle='Create next-year allocations';
+        const ids=Object.keys(f.rollover||{});
+        rolloverRows=ids.map(id=>{ const e=this.emp(id); return {
+          id, name:e.name, initials:this.initials(e.name), _av:this.avStyle(this.avIndex(id),30),
+          current:this.allocOf(id,y), value:f.rollover[id],
+          _onChange:(ev)=>this.onRoll(id,ev.target.value)
+        };});
+        rollHasRows=rolloverRows.length>0; rollEmpty=rolloverRows.length===0;
+        nextDisabled=!rollHasRows;
+        confirmLabel='Create '+rolloverRows.length+' allocation'+(rolloverRows.length===1?'':'s');
+        modalReview=rolloverRows.map(r=>'Create 2027 allocation for '+r.name+': '+(Number(r.value)||0)+' days');
+      }
+      if(m.kind!=='rollover') confirmLabel='Confirm';
+    }
+    const continueStyle={height:'34px',padding:'0 16px',fontSize:'13px',fontWeight:600,color:'#fff',border:'1px solid #7B68EE',borderRadius:'8px',
+      background:'#7B68EE',boxShadow:'0 1px 2px rgba(123,104,238,.25)',cursor:nextDisabled?'not-allowed':'pointer',opacity:nextDisabled?.45:1};
+
+    // ---- toggles ----
+    const track=(on,c)=>({width:'32px',height:'18px',borderRadius:'999px',background:on?c:'#d4d4d8',position:'relative',transition:'background .18s',flexShrink:0,display:'inline-block'});
+    const knob=(on)=>({position:'absolute',top:'2px',left:on?'16px':'2px',width:'14px',height:'14px',borderRadius:'50%',background:'#fff',transition:'left .18s',boxShadow:'0 1px 2px rgba(0,0,0,.25)'});
+    const yearBtns=this.YEARS.map(yy=>({label:yy, _click:()=>this.setYear(yy),
+      _style:{padding:'6px 13px',borderRadius:'7px',fontSize:'12.5px',fontWeight:600,cursor:'pointer',
+        color:s.year===yy?'#5c4bd4':'#71717a',background:s.year===yy?'#fff':'transparent',
+        boxShadow:s.year===yy?'0 1px 2px rgba(24,24,27,.08)':'none',border:'1px solid '+(s.year===yy?'#e3defb':'transparent')}}));
+
+    return {
+      team: this.props.team || 'People Ops', year:y,
+      // tabs
+      onTabBalances:this.onTabBalances, onTabLog:this.onTabLog,
+      isBalances:s.tab==='balances', isLog:s.tab==='log',
+      tabBalStyle:tabStyle(s.tab==='balances'), tabLogStyle:tabStyle(s.tab==='log'),
+      // read-only
+      onToggleReadOnly:this.onToggleReadOnly, roTrack:track(s.readOnly,'#d97706'), roKnob:knob(s.readOnly),
+      // balances toolbar
+      search:s.search, onSearch:this.onSearch, yearBtns,
+      onToggleInactive:this.onToggleInactive, showInactive:s.showInactive,
+      swTrack:track(s.showInactive,'#7B68EE'), swKnob:knob(s.showInactive),
+      onExport:this.onExport, rows,
+      // menu
+      menuOpen:s.menuOpen, toggleMenu:this.toggleMenu, closeMenu:this.closeMenu,
+      onMenuRecord:this.onMenuRecord, onMenuAddEmp:this.onMenuAddEmp, onMenuAdjust:this.onMenuAdjust,
+      onMenuChangeType:this.onMenuChangeType, onMenuOffboard:this.onMenuOffboard, onMenuRollover:this.onMenuRollover,
+      // log
+      reqRows, reqCountLabel:reqRows.length+' of '+s.reqs.length+' requests',
+      logYear:s.logYear, logStatus:s.logStatus, logPerson:s.logPerson,
+      yearOptions:years, personOptions:people,
+      onLogYear:this.onLogYear, onLogStatus:this.onLogStatus, onLogPerson:this.onLogPerson,
+      // drawer
+      hasEmp, emp, closeEmp:this.closeEmp,
+      // req dialog
+      hasReq, req, reqViewing, reqConfirming, closeReq:this.closeReq,
+      reqCancelStart:this.reqCancelStart, reqCancelBack:this.reqCancelBack, reqConfirmCancel:this.reqConfirmCancel,
+      // modal
+      hasModal:!!m, modal:m, modalTitle, modalSubtitle, modalReview, confirmLabel, nextDisabled, continueStyle,
+      mRecord, mAddEmp, mAdjust, mChangeType, mOffboard, mRollover, mReview, isStep1, isStep2,
+      leaveTypes:this.LEAVE, activeEmpOptions:s.emps.filter(e=>!e.inactive).map(e=>({id:e.id,name:e.name})),
+      addShowVac, adjHasCurrent, adjCurrentLabel, ctMsg, ctNeedDays, ctHasPerson,
+      rolloverRows, rollHasRows, rollEmpty,
+      closeModal:this.closeModal, modalNext:this.modalNext, modalBack:this.modalBack, confirmModal:this.confirmModal, stop:this.stop,
+      onFEmp:this.onFEmp, onFType:this.onFType, onFStart:this.onFStart, onFEnd:this.onFEnd, onFDur:this.onFDur, onFNote:this.onFNote,
+      onAFull:this.onAFull, onADisplay:this.onADisplay, onAEmail:this.onAEmail, onAType:this.onAType,
+      onFVac:this.onFVac, onFYear:this.onFYear, onFReason:this.onFReason,
+      // toasts
+      toasts:s.toasts.map(t=>({...t,_close:()=>this.dismiss(t.id),
+        _dot:{width:'7px',height:'7px',borderRadius:'50%',flexShrink:0,background:t.variant==='error'?'#f87171':'#4ade80'}}))
+    };
+  }
+}
+</script>
+</body>
+</html>
