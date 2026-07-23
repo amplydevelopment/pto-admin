@@ -31,6 +31,38 @@ export async function lookupSlackUserId(email: string): Promise<string | null> {
   }
 }
 
+// Full workspace roster, used when email lookup fails (several people's Slack
+// accounts are on a personal email, so email is not a reliable key).
+export async function listSlackUsers(): Promise<{ id: string; name: string; email: string }[]> {
+  try {
+    const res = await fetch(`${SLACK_API}/users.list?limit=1000`, {
+      headers: { Authorization: `Bearer ${token()}` },
+      cache: "no-store",
+    });
+    const data = (await res.json()) as {
+      ok: boolean;
+      members?: {
+        id?: string;
+        name?: string;
+        deleted?: boolean;
+        is_bot?: boolean;
+        profile?: { real_name?: string; email?: string };
+      }[];
+    };
+    if (!data.ok || !data.members) return [];
+    return data.members
+      .filter((m) => !!m.id && !m.deleted && !m.is_bot && m.id !== "USLACKBOT")
+      .map((m) => ({
+        id: m.id as string,
+        name: m.profile?.real_name || m.name || "",
+        email: m.profile?.email ?? "",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
 async function postMessage(channel: string, text: string): Promise<void> {
   const res = await fetch(`${SLACK_API}/chat.postMessage`, {
     method: "POST",

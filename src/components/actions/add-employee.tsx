@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { addEmployee } from "@/lib/actions";
+import { addEmployee, resolveSlackForEmail, searchSlackUsers } from "@/lib/actions";
+import type { SlackUserOption } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -22,12 +23,68 @@ export function AddEmployeeDialog({ open, onClose }: { open: boolean; onClose: (
   const [reviewing, setReviewing] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const [slackUser, setSlackUser] = useState<SlackUserOption | null>(null);
+  const [slackChecking, setSlackChecking] = useState(false);
+  const [slackNoMatch, setSlackNoMatch] = useState(false);
+  const [slackQuery, setSlackQuery] = useState("");
+  const [slackResults, setSlackResults] = useState<SlackUserOption[]>([]);
+  const [slackSearching, setSlackSearching] = useState(false);
+  const [notOnSlack, setNotOnSlack] = useState(false);
+
   const isEmployee = employmentType === "employee";
   const formValid = fullName.trim() && displayName.trim() && email.includes("@");
 
   function reset() {
     setFullName(""); setDisplayName(""); setEmail(""); setEmploymentType("employee");
     setStartedAt(""); setVacationDays("15"); setReviewing(false);
+    setSlackUser(null); setSlackChecking(false); setSlackNoMatch(false);
+    setSlackQuery(""); setSlackResults([]); setSlackSearching(false); setNotOnSlack(false);
+  }
+
+  async function checkEmailOnSlack() {
+    if (notOnSlack || slackUser) return;
+    const value = email.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) return;
+    setSlackChecking(true);
+    const res = await resolveSlackForEmail({ email: value });
+    setSlackChecking(false);
+    if (!res.ok) { toast.error(res.message ?? "Slack lookup failed."); return; }
+    if (res.match) { setSlackUser(res.match); setSlackNoMatch(false); }
+    else { setSlackUser(null); setSlackNoMatch(true); }
+  }
+
+  async function runSlackSearch(q: string) {
+    setSlackQuery(q);
+    if (q.trim().length < 2) { setSlackResults([]); return; }
+    setSlackSearching(true);
+    const res = await searchSlackUsers({ query: q });
+    setSlackSearching(false);
+    setSlackResults(res.ok ? res.users ?? [] : []);
+    if (!res.ok) toast.error(res.message ?? "Slack search failed.");
+  }
+
+  function pickSlackUser(u: SlackUserOption) {
+    setSlackUser(u);
+    setSlackNoMatch(false);
+    setSlackQuery("");
+    setSlackResults([]);
+  }
+
+  function clearSlackUser() {
+    setSlackUser(null);
+    setSlackNoMatch(true);
+    setSlackQuery("");
+    setSlackResults([]);
+  }
+
+  function toggleNotOnSlack(checked: boolean) {
+    setNotOnSlack(checked);
+    if (checked) {
+      setSlackUser(null);
+      setSlackNoMatch(false);
+      setSlackQuery("");
+      setSlackResults([]);
+    }
   }
 
   function submit() {
@@ -36,6 +93,7 @@ export function AddEmployeeDialog({ open, onClose }: { open: boolean; onClose: (
         fullName, displayName, email, employmentType,
         startedAt,
         vacationDays: isEmployee ? Number(vacationDays) : undefined,
+        slackUserId: notOnSlack ? undefined : slackUser?.id,
       });
       result.ok ? toast.success(result.message) : toast.error(result.message);
       if (result.ok) { reset(); onClose(); }
@@ -47,6 +105,9 @@ export function AddEmployeeDialog({ open, onClose }: { open: boolean; onClose: (
     isEmployee
       ? `Create their ${year} vacation allocation: ${vacationDays} day(s).`
       : "No vacation allocation (freelancers don't have one).",
+    !notOnSlack && slackUser
+      ? `Link their Slack account: ${slackUser.name}.`
+      : "No Slack account — they won't get PTO DMs.",
   ];
 
   return (
@@ -81,8 +142,94 @@ export function AddEmployeeDialog({ open, onClose }: { open: boolean; onClose: (
             </div>
             <div className="space-y-1.5">
               <Label>Work email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setSlackUser(null);
+                  setSlackNoMatch(false);
+                }}
+                onBlur={checkEmailOnSlack}
+              />
             </div>
+
+            <div className="space-y-1.5">
+              <Label>Slack account</Label>
+              {slackChecking && (
+                <p className="text-xs text-muted-foreground">Checking Slack…</p>
+              )}
+              {notOnSlack ? (
+                <p className="text-xs text-muted-foreground">
+                  Marked as not on Slack — they won&apos;t receive PTO DMs.
+                </p>
+              ) : slackUser ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5">
+                  <span className="text-sm">
+                    ✅ Slack: {slackUser.name}
+                    {slackUser.email ? ` (${slackUser.email})` : ""}
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" onClick={clearSlackUser}>
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {slackNoMatch && (
+                    <p className="text-xs text-amber-600">
+                      Couldn&apos;t find them on Slack by this email — search by name instead.
+                    </p>
+                  )}
+                  {slackNoMatch && (
+                    <>
+                      <Input
+                        placeholder="Search Slack by name"
+                        value={slackQuery}
+                        onChange={(e) => runSlackSearch(e.target.value)}
+                      />
+                      {slackSearching && (
+                        <p className="text-xs text-muted-foreground">Searching…</p>
+                      )}
+                      {!slackSearching && slackQuery.trim().length >= 2 && !slackResults.length && (
+                        <p className="text-xs text-muted-foreground">No Slack users match that.</p>
+                      )}
+                      {slackResults.length > 0 && (
+                        <div className="max-h-40 divide-y overflow-y-auto rounded-md border">
+                          {slackResults.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              className="block w-full px-2 py-1.5 text-left text-sm hover:bg-muted"
+                              onClick={() => pickSlackUser(u)}
+                            >
+                              {u.name}
+                              {u.email ? (
+                                <span className="text-muted-foreground"> — {u.email}</span>
+                              ) : null}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {!slackNoMatch && !slackChecking && (
+                    <p className="text-xs text-muted-foreground">
+                      We&apos;ll look them up on Slack once you fill in the work email.
+                    </p>
+                  )}
+                </>
+              )}
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="size-3.5"
+                  checked={notOnSlack}
+                  onChange={(e) => toggleNotOnSlack(e.target.checked)}
+                />
+                Not on Slack
+              </label>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Type</Label>

@@ -10,7 +10,13 @@ import {
   LEAVE_LABEL,
   type ImportPreview,
 } from "@/lib/clickup-normalize";
-import { lookupSlackUserId, announceInChannel, dmUser } from "@/lib/slack";
+import {
+  lookupSlackUserId,
+  listSlackUsers,
+  announceInChannel,
+  dmUser,
+} from "@/lib/slack";
+import type { SlackUserOption } from "@/lib/types";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -84,6 +90,7 @@ const addEmployeeSchema = z.object({
   employmentType: z.enum(["employee", "freelancer"]),
   startedAt: dateStr.optional().or(z.literal("")),
   vacationDays: z.coerce.number().min(0).optional(),
+  slackUserId: z.string().trim().optional(),
 });
 
 export const addEmployee = safe(async function addEmployee(input: unknown) {
@@ -102,6 +109,7 @@ export const addEmployee = safe(async function addEmployee(input: unknown) {
       employment_type: p.data.employmentType,
       status: "active",
       started_at: p.data.startedAt || null,
+      slack_user_id: p.data.slackUserId || null,
     })
     .select("id")
     .single();
@@ -294,7 +302,16 @@ async function runImportNotifications(opts: {
   }
 
   if (opts.notifyEmployee) {
-    const uid = opts.employeeEmail ? await lookupSlackUserId(opts.employeeEmail) : null;
+    // Prefer the stored Slack id — several people's Slack accounts use a
+    // personal email, so email lookup is only the fallback.
+    const { data: empSlack } = await db
+      .from("employees")
+      .select("slack_user_id")
+      .eq("id", opts.employeeId)
+      .maybeSingle();
+    const stored = empSlack?.slack_user_id || null;
+    const uid =
+      stored ?? (opts.employeeEmail ? await lookupSlackUserId(opts.employeeEmail) : null);
     if (!uid) {
       notes.push("Couldn't DM the employee (no matching Slack user).");
     } else {
@@ -550,3 +567,54 @@ export const importClickupTask = safe(async function importClickupTask(input: un
 
   return done(`Imported ${norm.employeeName}'s ${norm.leaveCode} as ${norm.dbStatus}.${extra}`);
 });
+
+// 9. Slack account resolution for the "Add employee" flow. Read-only, so these
+// are guarded by requireAuth() and are not blocked by READ_ONLY. They return a
+// custom shape, so they are not wrapped in safe().
+const slackEmailSchema = z.object({ email: z.email() });
+const slackQuerySchema = z.object({ query: z.string() });
+
+export async function resolveSlackForEmail(
+  input: unknown
+): Promise<{ ok: boolean; message?: string; match?: SlackUserOption | null }> {
+  try {
+    const notAuthed = await requireAuth();
+    if (notAuthed) return { ok: false, message: notAuthed.message };
+
+    const p = slackEmailSchema.safeParse(input);
+    if (!p.success) return { ok: false, message: "Enter a valid email address." };
+
+    const id = await lookupSlackUserId(p.data.email);
+    if (!id) return { ok: true, match: null };
+
+    const found = (await listSlackUsers()).find((u) => u.id === id);
+    return {
+      ok: true,
+      match: { id, name: found?.name || p.data.email, email: found?.email || p.data.email },
+    };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Unexpected error." };
+  }
+}
+
+export async function searchSlackUsers(
+  input: unknown
+): Promise<{ ok: boolean; message?: string; users?: SlackUserOption[] }> {
+  try {
+    const notAuthed = await requireAuth();
+    if (notAuthed) return { ok: false, message: notAuthed.message };
+
+    const p = slackQuerySchema.safeParse(input);
+    if (!p.success) return { ok: false, message: "Type a name to search for." };
+
+    const q = p.data.query.trim().toLowerCase();
+    if (q.length < 2) return { ok: true, users: [] };
+
+    const users = (await listSlackUsers()).filter(
+      (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    );
+    return { ok: true, users: users.slice(0, 10) };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Unexpected error." };
+  }
+}
