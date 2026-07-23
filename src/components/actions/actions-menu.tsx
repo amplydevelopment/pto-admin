@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { RecordTimeOffDialog } from "./record-time-off";
 import { AddEmployeeDialog } from "./add-employee";
 import { RolloverDialog } from "./rollover";
+import { ImportClickupDialog } from "./import-clickup";
 
 export type BalanceInfo = { employeeId: string; remaining: number | null; allotted: number | null };
 
@@ -19,13 +19,13 @@ export type ActionsData = {
   nextYearAllocated: string[];
 };
 
-// Global actions only — either there's no single person yet (Add employee),
-// it's bulk (Year rollover), or it's the high-frequency shortcut (Record time
-// off). Per-person edits live on the employee Sheet (see PersonActions).
-type ActionKey = "record" | "add-employee" | "rollover";
+// Global actions only — the high-frequency one (Import from ClickUp), one with
+// no single person yet (Add employee), and a bulk one (Year rollover).
+// Per-person edits live on the employee Sheet (see PersonActions).
+type ActionKey = "import" | "add-employee" | "rollover";
 
 const ITEMS: [ActionKey, string][] = [
-  ["record", "Record time off"],
+  ["import", "Add PTO"],
   ["add-employee", "Add employee"],
   ["rollover", "Year rollover"],
 ];
@@ -42,20 +42,20 @@ export function ActionsMenu(props: ActionsData) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {ITEMS.slice(0, 2).map(([key, label]) => (
-            <DropdownMenuItem key={key} onSelect={() => setOpen(key)}>
+            <DropdownMenuItem key={key} className="whitespace-nowrap" onSelect={() => setOpen(key)}>
               {label}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
           {ITEMS.slice(2).map(([key, label]) => (
-            <DropdownMenuItem key={key} onSelect={() => setOpen(key)}>
+            <DropdownMenuItem key={key} className="whitespace-nowrap" onSelect={() => setOpen(key)}>
               {label}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <RecordTimeOffDialog open={open === "record"} onClose={close} data={props} />
+      <ImportClickupDialog open={open === "import"} onClose={close} />
       <AddEmployeeDialog open={open === "add-employee"} onClose={close} />
       <RolloverDialog open={open === "rollover"} onClose={close} data={props} />
     </>

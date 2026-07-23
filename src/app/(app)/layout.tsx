@@ -73,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
-      <Toaster richColors position="bottom-right" />
+      <Toaster richColors />
     </div>
   );
 }

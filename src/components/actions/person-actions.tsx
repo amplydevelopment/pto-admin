@@ -4,12 +4,11 @@ import { useState } from "react";
 import type { Employee, LeaveType } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import type { ActionsData } from "./actions-menu";
-import { RecordTimeOffDialog } from "./record-time-off";
 import { AdjustAllocationDialog } from "./adjust-allocation";
 import { ChangeTypeDialog } from "./change-type";
 import { SetStatusDialog } from "./set-status";
 
-type PersonActionKey = "record" | "adjust-allocation" | "change-type" | "set-status";
+type PersonActionKey = "adjust-allocation" | "change-type" | "set-status";
 
 // Footer actions on the employee Sheet — every dialog is pre-locked to this
 // person (no person picker), so Ops acts on whoever they're already viewing.
@@ -40,9 +39,6 @@ export function PersonActions({
 
   return (
     <div className="flex flex-wrap gap-2 border-t pt-4">
-      <Button size="sm" onClick={() => setOpen("record")}>
-        Record time off
-      </Button>
       <Button size="sm" variant="outline" onClick={() => setOpen("adjust-allocation")}>
         Adjust allocation
       </Button>
@@ -53,7 +49,6 @@ export function PersonActions({
         {inactive ? "Reactivate" : "Mark inactive"}
       </Button>
 
-      <RecordTimeOffDialog open={open === "record"} onClose={close} data={data} lockedEmployeeId={employee.id} />
       <AdjustAllocationDialog open={open === "adjust-allocation"} onClose={close} data={data} lockedEmployeeId={employee.id} />
       <ChangeTypeDialog open={open === "change-type"} onClose={close} data={data} lockedEmployeeId={employee.id} />
       <SetStatusDialog open={open === "set-status"} onClose={close} data={data} lockedEmployeeId={employee.id} />

@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/supabase";
+import { parseTaskId, fetchClickupTask } from "@/lib/clickup";
+import {
+  normalizeClickupTask,
+  LEAVE_LABEL,
+  type ImportPreview,
+} from "@/lib/clickup-normalize";
+import { lookupSlackUserId, announceInChannel, dmUser } from "@/lib/slack";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -16,6 +23,14 @@ async function gate(): Promise<ActionResult | null> {
       message: "Read-only mode is ON — no changes were made. (READ_ONLY env flag)",
     };
   }
+  const session = await auth();
+  if (!session?.user) return { ok: false, message: "Not signed in." };
+  return null;
+}
+
+// Read-only operations (previews) still require a signed-in user, but are not
+// blocked by READ_ONLY since they never write.
+async function requireAuth(): Promise<ActionResult | null> {
   const session = await auth();
   if (!session?.user) return { ok: false, message: "Not signed in." };
   return null;
@@ -41,42 +56,7 @@ const done = (message: string): ActionResult => {
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-// 1. Record time off (manual entry — history only, no calendar/Everhour)
-const recordSchema = z.object({
-  employeeId: z.uuid(),
-  leaveType: z.string().min(1),
-  startDate: dateStr,
-  endDate: dateStr,
-  durationDays: z.coerce.number().gt(0).multipleOf(0.5),
-  note: z.string().trim().optional(),
-});
-
-export const recordTimeOff = safe(async function recordTimeOff(input: unknown) {
-  const blocked = await gate();
-  if (blocked) return blocked;
-
-  const p = recordSchema.safeParse(input);
-  if (!p.success) return fail(p.error.issues[0].message);
-  if (p.data.endDate < p.data.startDate) return fail("End date is before start date.");
-
-  const now = new Date().toISOString();
-  const { error } = await db.from("pto_requests").insert({
-    employee_id: p.data.employeeId,
-    leave_type: p.data.leaveType,
-    start_date: p.data.startDate,
-    end_date: p.data.endDate,
-    duration_days: p.data.durationDays,
-    status: "approved",
-    source: "manual",
-    notes: p.data.note || null,
-    requested_at: now,
-    approved_at: now,
-  });
-  if (error) return fail(error.message);
-  return done("Time off recorded.");
-});
-
-// 2. Cancel time off
+// 1. Cancel time off
 const cancelSchema = z.object({ requestId: z.uuid() });
 
 export const cancelTimeOff = safe(async function cancelTimeOff(input: unknown) {
@@ -125,7 +105,14 @@ export const addEmployee = safe(async function addEmployee(input: unknown) {
     })
     .select("id")
     .single();
-  if (error) return fail(error.message);
+  if (error) {
+    // 23505 = unique_violation. The only unique column here is email (id is a
+    // generated uuid), so this always means "that person already exists".
+    if (error.code === "23505" || /employees_email_key/i.test(error.message)) {
+      return fail(`Someone already exists with the email ${p.data.email}.`);
+    }
+    return fail(error.message);
+  }
 
   if (p.data.employmentType === "employee" && p.data.vacationDays != null) {
     const { error: allocError } = await db.from("pto_allocations").insert({
@@ -254,4 +241,312 @@ export const yearRollover = safe(async function yearRollover(input: unknown) {
   );
   if (error) return fail(error.message);
   return done(`Created ${p.data.rows.length} allocation(s) for ${p.data.year}.`);
+});
+
+// 8. Import from ClickUp — paste a task link; we fetch + parse it (same logic
+// the workflow uses), then either preview it or write the DB record. The row is
+// keyed on clickup_task_id, so this is idempotent and can never duplicate the
+// live workflow's writes. Side-effects (calendar/Everhour/Slack) are NOT done
+// here — see the preview text for exactly what happens per status.
+const importSchema = z.object({ url: z.string().min(1) });
+
+function timestampsFor(status: string, now: string): Record<string, string> {
+  if (status === "approved") return { approved_at: now };
+  if (status === "cancelled") return { cancelled_at: now };
+  if (status === "denied") return { denied_at: now };
+  if (status === "complete") return { completed_at: now };
+  return {}; // pending
+}
+
+const importCommitSchema = z.object({
+  url: z.string().min(1),
+  notifyEmployee: z.boolean().optional().default(false),
+  announceChannel: z.boolean().optional().default(false),
+});
+
+// Opt-in Slack for the upcoming-approved case only. Every send is best-effort
+// and non-fatal: the DB record is already written by the time this runs, so
+// failures come back as human-readable notes rather than errors.
+async function runImportNotifications(opts: {
+  employeeId: string;
+  employeeEmail: string | null;
+  employeeName: string | null;
+  leaveLabel: string;
+  startDate: string | null;
+  endDate: string | null;
+  days: number;
+  year: number;
+  notifyEmployee: boolean;
+  announceChannel: boolean;
+}): Promise<string[]> {
+  const notes: string[] = [];
+  const who = opts.employeeName ?? "the employee";
+
+  if (opts.announceChannel) {
+    try {
+      await announceInChannel(
+        `:beach_with_umbrella: *${who}* will be OOO — ${opts.leaveLabel}, ${opts.startDate} → ${opts.endDate} (${opts.days} day(s)).`
+      );
+      notes.push("Announced in #pto.");
+    } catch (e) {
+      notes.push(`Channel announce failed: ${e instanceof Error ? e.message : "error"}.`);
+    }
+  }
+
+  if (opts.notifyEmployee) {
+    const uid = opts.employeeEmail ? await lookupSlackUserId(opts.employeeEmail) : null;
+    if (!uid) {
+      notes.push("Couldn't DM the employee (no matching Slack user).");
+    } else {
+      let vacLine = "";
+      const { data: rem } = await db
+        .from("v_remaining_vacation")
+        .select("vacation_days_allotted, remaining_vacation_days")
+        .eq("employee_id", opts.employeeId)
+        .eq("year", opts.year)
+        .maybeSingle();
+      if (rem?.remaining_vacation_days != null) {
+        vacLine = `\n• Vacation balance: ${rem.remaining_vacation_days} of ${rem.vacation_days_allotted} day(s) left this year.`;
+      }
+      const first = (opts.employeeName ?? "there").split(" ")[0];
+      try {
+        await dmUser(
+          uid,
+          `Hi ${first}! Your ${opts.leaveLabel} has been recorded and approved :white_check_mark:\n` +
+            `• Dates: ${opts.startDate} → ${opts.endDate} (${opts.days} day(s))${vacLine}\n\n` +
+            `Logged by the Ops team — reach out to HR if anything looks off.`
+        );
+        notes.push(`DM'd ${who}.`);
+      } catch (e) {
+        notes.push(`DM failed: ${e instanceof Error ? e.message : "error"}.`);
+      }
+    }
+  }
+  return notes;
+}
+
+export async function previewClickupImport(
+  input: unknown
+): Promise<{ ok: boolean; message?: string; preview?: ImportPreview }> {
+  try {
+    const notAuthed = await requireAuth();
+    if (notAuthed) return { ok: false, message: notAuthed.message };
+
+    const p = importSchema.safeParse(input);
+    if (!p.success) return { ok: false, message: "Paste a ClickUp task link." };
+    const taskId = parseTaskId(p.data.url);
+    if (!taskId) return { ok: false, message: "That doesn't look like a ClickUp task link." };
+
+    const norm = normalizeClickupTask(await fetchClickupTask(taskId));
+
+    // Match the requester to a known employee (fail-closed if not found).
+    let matchedId: string | null = null;
+    let matchedName: string | null = null;
+    if (norm.employeeEmail) {
+      const { data: emp } = await db
+        .from("employees")
+        .select("id, display_name")
+        .eq("email", norm.employeeEmail)
+        .maybeSingle();
+      if (emp) {
+        matchedId = emp.id;
+        matchedName = emp.display_name;
+      }
+    }
+
+    // Is this task already recorded?
+    let existingStatus: string | null = null;
+    if (norm.clickupTaskId) {
+      const { data: ex } = await db
+        .from("pto_requests")
+        .select("status")
+        .eq("clickup_task_id", norm.clickupTaskId)
+        .maybeSingle();
+      existingStatus = ex?.status ?? null;
+    }
+
+    // Vacation impact (only meaningful for counted statuses).
+    let remaining: number | null = null;
+    if (matchedId && norm.leaveCode === "vacation" && norm.startDate) {
+      const year = Number(norm.startDate.slice(0, 4));
+      const { data: rem } = await db
+        .from("v_remaining_vacation")
+        .select("remaining_vacation_days")
+        .eq("employee_id", matchedId)
+        .eq("year", year)
+        .maybeSingle();
+      remaining = rem?.remaining_vacation_days ?? null;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const isFuture = !!norm.endDate && norm.endDate >= today;
+    const label = norm.leaveCode ? LEAVE_LABEL[norm.leaveCode] ?? norm.leaveCode : "—";
+
+    const effects: string[] = [];
+    const warnings: string[] = [];
+    let canImport = true;
+
+    if (norm.parseError) {
+      warnings.push(`Couldn't read this task: ${norm.parseError}.`);
+      canImport = false;
+    }
+    if (!matchedId) {
+      warnings.push(
+        `Couldn't identify the employee (${norm.employeeEmail ?? "no email on the task"}). ` +
+          `Fix the Employee field in ClickUp, or add the person first.`
+      );
+      canImport = false;
+    }
+
+    if (canImport) {
+      if (existingStatus) {
+        if (existingStatus === norm.dbStatus) {
+          effects.push(`Already recorded as ${existingStatus} — importing makes no change.`);
+          canImport = false;
+        } else {
+          effects.push(`Update the existing record: status ${existingStatus} → ${norm.dbStatus}.`);
+        }
+      } else {
+        effects.push(
+          `Record ${matchedName ?? norm.employeeName}'s ${label}: ${norm.startDate} → ${norm.endDate} (${norm.daysRequested} day(s)) as ${norm.dbStatus}.`
+        );
+      }
+
+      const counts = norm.dbStatus === "approved" || norm.dbStatus === "complete";
+      if (counts && norm.leaveCode === "vacation" && remaining != null) {
+        effects.push(
+          `Counts toward vacation: ${remaining} → ${Math.max(0, remaining - norm.daysRequested)} remaining.`
+        );
+      }
+
+      if (norm.dbStatus === "approved" && isFuture) {
+        warnings.push(
+          `Upcoming approved leave — it also needs a calendar event and Everhour block. ` +
+            `This import writes the database record only; calendar/Everhour creation from the app isn't wired up yet.`
+        );
+        // Slack is opt-in below (only for this future-approved case).
+      } else {
+        effects.push(`No calendar event, Everhour block, or Slack message — database record only.`);
+      }
+    }
+
+    return {
+      ok: true,
+      preview: {
+        taskId: norm.clickupTaskId ?? taskId,
+        taskUrl: norm.clickupTaskUrl ?? `https://app.clickup.com/t/${taskId}`,
+        clickupStatus: norm.clickupStatus,
+        dbStatus: norm.dbStatus,
+        employeeName: norm.employeeName,
+        employeeEmail: norm.employeeEmail,
+        matchedName,
+        leaveCode: norm.leaveCode,
+        leaveLabel: label,
+        startDate: norm.startDate,
+        endDate: norm.endDate,
+        days: norm.daysRequested,
+        isFuture,
+        alreadyExists: !!existingStatus,
+        existingStatus,
+        effects,
+        warnings,
+        canImport,
+      },
+    };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Unexpected error." };
+  }
+}
+
+export const importClickupTask = safe(async function importClickupTask(input: unknown) {
+  const blocked = await gate();
+  if (blocked) return blocked;
+
+  const p = importCommitSchema.safeParse(input);
+  if (!p.success) return fail("Missing task link.");
+  const taskId = parseTaskId(p.data.url);
+  if (!taskId) return fail("That doesn't look like a ClickUp task link.");
+
+  // Re-fetch fresh truth; never trust anything the client passed.
+  const norm = normalizeClickupTask(await fetchClickupTask(taskId));
+  if (norm.parseError) return fail(`Couldn't read the task: ${norm.parseError}`);
+  if (!norm.clickupTaskId) return fail("Task has no id.");
+
+  const { data: emp } = await db
+    .from("employees")
+    .select("id")
+    .eq("email", norm.employeeEmail ?? " ")
+    .maybeSingle();
+  if (!emp) {
+    return fail(
+      `Couldn't identify the employee (${norm.employeeEmail ?? "no email on the task"}). ` +
+        `Fix the Employee field in ClickUp, or add the person first.`
+    );
+  }
+
+  const now = new Date().toISOString();
+  const stamps = timestampsFor(norm.dbStatus, now);
+  const isFuture = !!norm.endDate && norm.endDate >= now.slice(0, 10);
+
+  const { data: existing } = await db
+    .from("pto_requests")
+    .select("id, status")
+    .eq("clickup_task_id", norm.clickupTaskId)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === norm.dbStatus) {
+      return done(`Already recorded as ${existing.status}. No change.`);
+    }
+    const { error } = await db
+      .from("pto_requests")
+      .update({ status: norm.dbStatus, ...stamps })
+      .eq("id", existing.id);
+    if (error) return fail(error.message);
+    return done(`Updated status: ${existing.status} → ${norm.dbStatus}.`);
+  }
+
+  const { error } = await db.from("pto_requests").insert({
+    employee_id: emp.id,
+    leave_type: norm.leaveCode,
+    start_date: norm.startDate,
+    end_date: norm.endDate,
+    duration_days: norm.daysRequested,
+    status: norm.dbStatus,
+    source: "clickup",
+    clickup_task_id: norm.clickupTaskId,
+    requested_at: now,
+    ...stamps,
+  });
+  if (error) {
+    if (/duplicate key/i.test(error.message)) {
+      return done("Already recorded (concurrent import). No change.");
+    }
+    return fail(error.message);
+  }
+
+  // Opt-in Slack — only ever for an upcoming approved leave, gated here so it
+  // can't fire for the wrong case even if the client sends the flags.
+  let extra = "";
+  if (isFuture && norm.dbStatus === "approved" && (p.data.notifyEmployee || p.data.announceChannel)) {
+    try {
+      const notes = await runImportNotifications({
+        employeeId: emp.id,
+        employeeEmail: norm.employeeEmail,
+        employeeName: norm.employeeName,
+        leaveLabel: norm.leaveCode ? LEAVE_LABEL[norm.leaveCode] ?? norm.leaveCode : "leave",
+        startDate: norm.startDate,
+        endDate: norm.endDate,
+        days: norm.daysRequested,
+        year: norm.startDate ? Number(norm.startDate.slice(0, 4)) : new Date().getFullYear(),
+        notifyEmployee: p.data.notifyEmployee,
+        announceChannel: p.data.announceChannel,
+      });
+      if (notes.length) extra = " " + notes.join(" ");
+    } catch (e) {
+      extra = ` (notifications error: ${e instanceof Error ? e.message : "error"})`;
+    }
+  }
+
+  return done(`Imported ${norm.employeeName}'s ${norm.leaveCode} as ${norm.dbStatus}.${extra}`);
 });
