@@ -1,4 +1,4 @@
-import { getLog } from "@/lib/queries";
+import { getLeaveTypes, getLog } from "@/lib/queries";
 import { LogTable } from "@/components/log-table";
 import { LogStatusFilter } from "@/components/log-filters";
 import { NameSearch } from "@/components/name-search";
@@ -15,7 +15,10 @@ export default async function LogPage({
   const params = await searchParams;
   const year = Number(params.year) || new Date().getFullYear();
 
-  const requests = await getLog({ year, status: params.status });
+  const [requests, leaveTypes] = await Promise.all([
+    getLog({ year, status: params.status }),
+    getLeaveTypes(),
+  ]);
 
   const exportQuery = new URLSearchParams({ year: String(year) });
   if (params.status) exportQuery.set("status", params.status);
@@ -33,7 +36,7 @@ export default async function LogPage({
           <a href={`/api/export/log?${exportQuery}`}>Export CSV</a>
         </Button>
       </div>
-      <LogTable requests={requests} />
+      <LogTable requests={requests} leaveTypes={leaveTypes} />
       <p className="border-t px-4 py-3 text-xs text-muted-foreground">
         Showing {requests.length} request(s) with a start date in {year}.
       </p>

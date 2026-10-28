@@ -1,11 +1,9 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 
-// Explicit column lists everywhere. `everhour_assignment_id` and `denied_at`
-// exist only in the dev mirror, not in this (Amply prod) database yet —
-// selecting them would error.
+// Explicit column lists everywhere.
 const REQUEST_COLUMNS =
-  "id, employee_id, leave_type, start_date, end_date, duration_days, status, source, clickup_task_id, google_calendar_event_id, notes, requested_at, approved_at, cancelled_at, completed_at, created_at";
+  "id, employee_id, leave_type, start_date, end_date, duration_days, status, source, clickup_task_id, google_calendar_event_id, everhour_assignment_id, notes, requested_at, approved_at, cancelled_at, completed_at, created_at";
 
 export type Employee = {
   id: string;
@@ -34,6 +32,7 @@ export type PtoRequest = {
   source: "clickup" | "manual";
   clickup_task_id: string | null;
   google_calendar_event_id: string | null;
+  everhour_assignment_id: string | null;
   notes: string | null;
   requested_at: string | null;
   approved_at: string | null;

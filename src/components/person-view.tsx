@@ -57,7 +57,7 @@ export function PersonView({ data, year }: { data: PersonData; year: number }) {
       <div>
         <h3 className="mb-2 text-sm font-medium">All requests</h3>
         <div className="overflow-x-auto">
-          <LogTable requests={requests} hidePerson />
+          <LogTable requests={requests} leaveTypes={leaveTypes} hidePerson />
         </div>
       </div>
 

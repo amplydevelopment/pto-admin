@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cancelTimeOff } from "@/lib/actions";
-import type { PtoRequest } from "@/lib/queries";
+import type { LeaveType, PtoRequest } from "@/lib/queries";
 import { StatusChip, SourceDot } from "@/components/pto-ui";
+import { EditRequestForm } from "@/components/actions/edit-request";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -15,18 +16,22 @@ import {
 
 export function LogTable({
   requests,
+  leaveTypes,
   hidePerson = false,
 }: {
   requests: PtoRequest[];
+  leaveTypes: LeaveType[];
   hidePerson?: boolean;
 }) {
   const [selected, setSelected] = useState<PtoRequest | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function close() {
     setSelected(null);
     setConfirmingCancel(false);
+    setEditing(false);
   }
 
   function submitCancel(request: PtoRequest) {
@@ -38,6 +43,7 @@ export function LogTable({
   }
 
   const cancellable = (r: PtoRequest) => r.status === "approved" || r.status === "pending";
+  const editable = (r: PtoRequest) => r.status !== "cancelled" && r.status !== "denied";
 
   return (
     <>
@@ -115,7 +121,14 @@ export function LogTable({
                 {selected.notes && <p>Note: {selected.notes}</p>}
               </div>
 
-              {confirmingCancel ? (
+              {editing ? (
+                <EditRequestForm
+                  request={selected}
+                  leaveTypes={leaveTypes}
+                  onBack={() => setEditing(false)}
+                  onDone={close}
+                />
+              ) : confirmingCancel ? (
                 <div className="space-y-3 rounded-md border p-3 text-sm">
                   {selected.clickup_task_id ? (
                     <p className="text-amber-700">
@@ -145,6 +158,11 @@ export function LogTable({
                 </div>
               ) : (
                 <DialogFooter>
+                  {editable(selected) && (
+                    <Button variant="outline" onClick={() => setEditing(true)}>
+                      Edit…
+                    </Button>
+                  )}
                   {cancellable(selected) && (
                     <Button variant="destructive" onClick={() => setConfirmingCancel(true)}>
                       Cancel this time off…

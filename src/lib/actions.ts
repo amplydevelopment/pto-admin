@@ -17,6 +17,7 @@ import {
   dmUser,
 } from "@/lib/slack";
 import type { SlackUserOption } from "@/lib/types";
+import { syncEditedRequest } from "@/lib/edit-sync";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -80,6 +81,52 @@ export const cancelTimeOff = safe(async function cancelTimeOff(input: unknown) {
   if (error) return fail(error.message);
   if (!data?.length) return fail("Request not found.");
   return done("Time off cancelled in the database.");
+});
+
+// 2. Edit time off (type, dates, days; reason optional — appended to notes).
+// After the DB write, n8n "PTO Edit Sync" updates the calendar event and
+// replaces the Everhour entry (approved/complete rows only).
+const editSchema = z
+  .object({
+    requestId: z.uuid(),
+    leaveType: z.string().trim().min(1),
+    startDate: dateStr,
+    endDate: dateStr,
+    durationDays: z.coerce.number().positive("Days must be more than 0."),
+    reason: z.string().trim().optional(),
+  })
+  .refine((v) => v.endDate >= v.startDate, "End date can't be before the start date.");
+
+export const editTimeOff = safe(async function editTimeOff(input: unknown) {
+  const blocked = await gate();
+  if (blocked) return blocked;
+
+  const p = editSchema.safeParse(input);
+  if (!p.success) return fail(p.error.issues[0].message);
+
+  const { data: existing, error: readError } = await db
+    .from("pto_requests")
+    .select("notes")
+    .eq("id", p.data.requestId)
+    .maybeSingle();
+  if (readError) return fail(readError.message);
+  if (!existing) return fail("Request not found.");
+
+  const changes: Record<string, string | number> = {
+    leave_type: p.data.leaveType,
+    start_date: p.data.startDate,
+    end_date: p.data.endDate,
+    duration_days: p.data.durationDays,
+  };
+  if (p.data.reason) {
+    const line = `Edited ${new Date().toISOString().slice(0, 10)}: ${p.data.reason}`;
+    changes.notes = existing.notes ? `${existing.notes}\n${line}` : line;
+  }
+
+  const { error } = await db.from("pto_requests").update(changes).eq("id", p.data.requestId);
+  if (error) return fail(error.message);
+  const notes = await syncEditedRequest(p.data.requestId);
+  return done(["Request updated.", ...notes].join(" "));
 });
 
 // 3. Add employee (employees row + current-year allocation, one intent)
